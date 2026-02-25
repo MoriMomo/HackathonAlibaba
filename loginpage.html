@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="/HackathonAlibaba/style.css">
+</head>
+<body>
+    <form class="card" id="formLogin">
+        <h1>Login</h1>
+        <input type="text" name="username" id="userLogin" placeholder="username" class="stringbox" required>
+        <input type="password" name="password" id="passLogin" placeholder="password" class="stringbox" maxlength="8" required>
+        
+        <div class="show-pass" style="text-align: right; font-size: 11px; margin-top: 5px;">
+            <label style="cursor: pointer;">
+                Show Password <input type="checkbox" onclick="togglePassword()" style="width: 10px; height: 10px;">
+            </label>
+        </div>
+
+        <button type="submit" class="loginbutton">Login</button>
+        <a href="/HackathonAlibaba/registpage.html" class="forgetbtn">Daftar Akun Baru</a>
+    </form>
+
+    <script>
+        function togglePassword() {
+            var x = document.getElementById("passLogin");
+            x.type = (x.type === "password") ? "text" : "password";
+        }
+
+        const formLogin = document.getElementById('formLogin');
+        
+        formLogin.onsubmit = async (e) => {
+            e.preventDefault();
+
+            document.getElementById('userLogin').style.borderColor = "";
+            document.getElementById('passLogin').style.borderColor = "";
+            
+            }; // <--- Penutup onsubmit harus di paling bawah sini
+    </script>
+</body>
+</html>

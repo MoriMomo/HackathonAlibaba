@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="/HackathonAlibaba/style.css">
+</head>
+<body>
+    <form class="card" id="formRegis">
+        <h1>Register</h1>
+        <input type="text" name="username" id="regUser" placeholder="username" class="stringbox" required>
+        <input type="password" name="password" id="regPass" placeholder="password (max 8)" class="stringbox" maxlength="8" required>
+        
+        <div class="show-pass" style="text-align: right; font-size: 11px; margin-top: 5px;">
+            <label style="cursor: pointer;">
+                Show Password <input type="checkbox" onclick="toggleRegPass()" style="width: 10px; height: 10px;">
+            </label>
+        </div>
+
+        <button type="submit" class="loginbutton">Buat Akun</button>
+        <a href="/HackathonAlibaba/loginpage.html" class="forgetbtn">Sudah punya akun? Login</a>
+    </form>
+
+    <script>
+        function toggleRegPass() {
+            var x = document.getElementById("regPass");
+            x.type = (x.type === "password") ? "text" : "password";
+        }
+
+        const formRegis = document.getElementById('formRegis');
+        formRegis.onsubmit = async (e) => {
+            e.preventDefault(); 
+
+            // Reset warna border dulu
+            document.getElementById('regUser').style.borderColor = "";
+            document.getElementById('regPass').style.borderColor = "";
+        };
+    </script>
+</body>
+</html>
