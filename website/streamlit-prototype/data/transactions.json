@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "time": "2026-02-26T15:31:55",
+    "amount": 50000.0,
+    "merchant": "MERCHANT_001",
+    "user_location": "Jakarta",
+    "merchant_location": "Jakarta",
+    "local_hour": 15,
+    "status": "FLAGGED",
+    "ai_score": 50,
+    "ai_reasons": [
+      "High value transaction"
+    ]
+  }
+]
