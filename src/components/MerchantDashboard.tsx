@@ -100,6 +100,7 @@ export default function MerchantDashboard() {
           ) : (
             <div className="flex flex-col items-center">
               <div className="bg-white p-4 rounded-xl mb-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={qrisUrl} alt="QRIS Code" className="w-[200px] h-[200px] object-cover" />
               </div>
               <h3 className="font-bold text-lg text-emerald-400">Scan to Pay</h3>

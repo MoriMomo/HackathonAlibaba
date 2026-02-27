@@ -1,5 +1,21 @@
 import crypto from 'crypto';
 
+// Helper to remove null/undefined fields as required by PayLabs docs
+function cleanPayload(obj: Record<string, unknown>): Record<string, unknown> {
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (value === null || value === undefined) {
+            continue;
+        }
+        if (typeof value === 'object' && !Array.isArray(value)) {
+            cleaned[key] = cleanPayload(value as Record<string, unknown>);
+        } else {
+            cleaned[key] = value;
+        }
+    }
+    return cleaned;
+}
+
 export function generatePaylabsSignature(
     method: 'POST' | 'GET',
     endpoint: string,
@@ -7,8 +23,9 @@ export function generatePaylabsSignature(
     timestamp: string,
     privateKey: string
 ): string {
-    // 1. Minify the JSON body without spaces
-    const minifiedBody = JSON.stringify(body);
+    // 1. Minify the JSON body without spaces and remove nulls
+    const cleanedBody = cleanPayload(body);
+    const minifiedBody = JSON.stringify(cleanedBody);
 
     // 2. Hash the minified body using SHA-256
     const hashFunc = crypto.createHash('sha256');

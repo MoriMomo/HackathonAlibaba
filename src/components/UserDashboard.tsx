@@ -9,9 +9,6 @@ import {
   Send,
   TrendingUp,
   ShieldCheck,
-  CreditCard,
-  ShoppingBag,
-  Coffee,
   AlertCircle,
   MoreHorizontal,
   Bell,
@@ -23,7 +20,7 @@ import {
 
 // --- Sub-Components for Cleanliness ---
 
-const StatPill = ({ label, value, colorClass, icon: Icon }: any) => (
+const StatPill = ({ label, value, colorClass, icon: Icon }: { label: string, value: string | number, colorClass: string, icon?: React.ElementType }) => (
   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${colorClass}`}>
     {Icon && <Icon size={14} />}
     <span>{label}:</span>
@@ -62,8 +59,11 @@ const TransactionItem = ({ icon: Icon, color, merchant, date, amount, status, is
 // --- Main Dashboard Component ---
 
 export default function UserDashboard() {
-  const { state, showToast, topUpUser, addOfflineTransaction } = useQunci();
+  const { state, showToast, addOfflineTransaction, processQRISPayment } = useQunci();
   const [showOfflineCode, setShowOfflineCode] = useState(false);
+  const [isScanningQR, setIsScanningQR] = useState(false);
+  const [qrisAmount, setQrisAmount] = useState('50000');
+
   const isOffline = state.network === 'OFFLINE';
   const isLocked = state.walletLocked;
 
@@ -72,8 +72,24 @@ export default function UserDashboard() {
     if (isOffline) {
       showToast("QRIS is only available Online!", "error");
     } else {
-      showToast("QRIS Payment Successful. Protected by Qunci Shield.", "success");
+      setIsScanningQR(true);
     }
+  };
+
+  const confirmQRISPayment = () => {
+    const amountNum = parseInt(qrisAmount, 10);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      showToast("Please enter a valid amount", "error");
+      return;
+    }
+
+    setIsScanningQR(false);
+    showToast("Processing QRIS payment securely...", "info");
+
+    // Simulate slight network delay
+    setTimeout(() => {
+      processQRISPayment(amountNum);
+    }, 1500);
   };
 
   const handleOfflinePay = () => {
@@ -87,12 +103,29 @@ export default function UserDashboard() {
     }, 3000);
   };
 
-  const handleTopUp = () => {
+  const handleTopUp = async () => {
     showToast("Opening PayLabs Top Up Gateway...", "info");
-    setTimeout(() => {
-      topUpUser(500000);
-      showToast("Top Up Rp 500.000 via PayLabs Successful!", "success");
-    }, 1500)
+    try {
+      const response = await fetch('/api/paylabs/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 500000 }), // Default demo amount
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        showToast("Redirecting to PayLabs Secure Checkout...", "success");
+        // Redirect the user browser to the PayLabs HTML5 Cashier
+        window.location.href = data.url;
+      } else {
+        showToast(data.error || "Failed to generate Top Up link", "error");
+        console.error("Top-Up Error:", data);
+      }
+    } catch (err) {
+      showToast("Network Error contacting Payment Gateway", "error");
+      console.error(err);
+    }
   };
 
   return (
@@ -140,7 +173,7 @@ export default function UserDashboard() {
             />
             <StatPill
               label="Points"
-              value={`${state.points.toLocaleString()}`}
+              value={`${state.points.toLocaleString('id-ID')}`}
               colorClass="bg-amber-50 border-amber-100 text-amber-700"
               icon={TrendingUp}
             />
@@ -179,6 +212,42 @@ export default function UserDashboard() {
                   <h3 className="text-xl font-bold mb-2">Show to Merchant</h3>
                   <p className="text-slate-300 text-sm font-mono bg-white/10 px-4 py-2 rounded-lg tracking-widest">QNC-882-910-OFF</p>
                   <p className="text-xs text-slate-400 mt-4">Waiting for merchant scan...</p>
+                </div>
+              )}
+
+              {/* QRIS Scanning Mock overlay */}
+              {isScanningQR && !isLocked && (
+                <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-xl flex flex-col items-center justify-center z-30 p-6 text-center animate-in fade-in zoom-in duration-300">
+                  <ScanLine size={48} className="text-emerald-400 mb-4 animate-pulse" />
+                  <h3 className="text-xl font-bold text-white mb-2">Scan QRIS</h3>
+                  <p className="text-slate-300 text-sm mb-6">Enter the amount to simulate a merchant scan:</p>
+
+                  <div className="flex bg-white/10 rounded-xl overflow-hidden mb-6 border border-white/20 w-fit focus-within:border-emerald-400 transition-colors">
+                    <span className="px-4 py-3 bg-white/5 text-slate-300 font-bold border-r border-white/10">Rp</span>
+                    <input
+                      type="number"
+                      value={qrisAmount}
+                      onChange={(e) => setQrisAmount(e.target.value)}
+                      className="bg-transparent text-white font-bold text-xl px-4 py-3 outline-none w-32 placeholder:text-slate-500"
+                      placeholder="0"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex gap-3 w-full max-w-[200px]">
+                    <button
+                      onClick={() => setIsScanningQR(false)}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-slate-300 bg-white/5 hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmQRISPayment}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
+                    >
+                      Pay
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -269,12 +338,12 @@ export default function UserDashboard() {
 
               <div className="divide-y divide-gray-50">
                 {state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').length > 0 ? (
-                  state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').map((tx: any) => (
+                  state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').map((tx: { id: string, status: string, merchant?: string, timestamp: string, amount: number }) => (
                     <TransactionItem
                       key={tx.id}
                       icon={tx.status === 'RISK_HOLD' ? Lock : Store}
                       color={tx.status === 'RISK_HOLD' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600"}
-                      merchant={tx.merchant}
+                      merchant={tx.merchant || "Unknown Merchant"}
                       date={tx.timestamp}
                       amount={tx.amount}
                       status={tx.status}

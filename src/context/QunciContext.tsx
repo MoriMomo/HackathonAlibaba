@@ -56,6 +56,7 @@ interface QunciContextType {
   addOfflineTransaction: (amount: number, merchantId: string) => void;
   cashOutMerchant: (amount: number, bankCode: string, accountNo: string, accountName: string) => Promise<boolean>;
   generateMerchantQR: (amount: number) => Promise<string | null>;
+  processQRISPayment: (amount: number) => boolean;
   topUpUser: (amount: number) => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   toast: { msg: string, type: 'success' | 'error' | 'info' } | null;
@@ -252,6 +253,40 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const processQRISPayment = (amount: number): boolean => {
+    let success = false;
+    setState(prev => {
+      if (prev.userBalance < amount) {
+        showToast("Insufficient Balance for QRIS payment.", "error");
+        return prev;
+      }
+
+      success = true;
+      const mdrFee = amount * 0.015; // 1.5% MDR deduction for merchant
+      const settlementAmount = amount - mdrFee;
+
+      const newTx: Transaction = {
+        id: `tx_qris_${Date.now()}`,
+        type: 'PAYMENT',
+        amount: amount,
+        status: 'COMPLETED',
+        merchant: 'Qunci Merchant (QRIS)',
+        timestamp: new Date().toLocaleString(),
+        riskScore: 5 // Low risk default
+      };
+
+      showToast(`QRIS Payment of Rp ${amount.toLocaleString('id-ID')} Successful!`, "success");
+
+      return {
+        ...prev,
+        userBalance: prev.userBalance - amount,
+        merchantBalance: prev.merchantBalance + settlementAmount,
+        transactions: [newTx, ...prev.transactions]
+      };
+    });
+    return success;
+  };
+
   const topUpUser = (amount: number) => {
     setState(prev => {
       const newTx: Transaction = {
@@ -285,6 +320,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
       addOfflineTransaction,
       cashOutMerchant,
       generateMerchantQR,
+      processQRISPayment,
       topUpUser,
       showToast,
       toast
