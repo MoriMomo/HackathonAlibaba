@@ -15,10 +15,10 @@ export async function POST(request: Request) {
 
         const timestamp = generateTimestamp();
 
-        // Standard payload format suitable for generating the RSA signature 
+        // Standard payload format for generating the RSA signature 
         const body = {
             merchantId: merchantId,
-            requestId: `REQ-${Date.now()}`,
+            requestNo: `REMIT-${Date.now()}`,
             amount: amount.toString(),
             receiverBankCode: bankCode,
             receiverAccountNo: accountNo,
@@ -26,20 +26,17 @@ export async function POST(request: Request) {
             purpose: "Merchant Settlement"
         };
 
-        const endpoint = '/api/v1/disbursement';
+        const endpoint = '/payment/v2.3/remit/create';
         const signature = generatePaylabsSignature('POST', endpoint, body, timestamp, privateKey);
 
         console.log("============================");
         console.log("PAYLABS DISBURSEMENT REQUEST");
-        console.log("Timestamp:", timestamp);
+        console.log("Endpoint:", endpoint);
         console.log("Signature:", signature);
+        console.log("Body:", body);
         console.log("============================");
 
         try {
-            // Firing the request to the SIT environment 
-            // Note: Since we don't have all required disbursement bank attributes (account number etc) 
-            // from the frontend yet, this might return a 400 Bad Request from SIT, 
-            // but the cryptography phase is successfully executed.
             const response = await fetch(`${apiUrl}${endpoint}`, {
                 method: 'POST',
                 headers: {
@@ -51,17 +48,34 @@ export async function POST(request: Request) {
                 body: JSON.stringify(body),
             });
 
-            const data = await response.text();
-            console.log("PayLabs SIT Response:", data);
-        } catch (fetchError) {
-            console.warn("Could not reach SIT server, network error.", fetchError);
-        }
+            const dataText = await response.text();
+            let parsedData;
+            try {
+                parsedData = JSON.parse(dataText);
+            } catch (e) {
+                console.error("Paylabs non-JSON response:", dataText);
+                return NextResponse.json({ error: 'PayLabs returned invalid data', raw: dataText }, { status: 500 });
+            }
 
-        return NextResponse.json({
-            success: true,
-            message: 'Disbursement processed with valid RSA signature.',
-            debug: { signature, timestamp }
-        }, { status: 200 });
+            console.log("PayLabs Cashout Response:", parsedData);
+
+            if (parsedData.errCode === '0' || parsedData.errCode === '0000') {
+                return NextResponse.json({
+                    success: true,
+                    data: parsedData
+                }, { status: 200 });
+            } else {
+                return NextResponse.json({
+                    success: false,
+                    error: parsedData.errCodeDes || 'Disbursement Failed',
+                    data: parsedData
+                }, { status: 400 });
+            }
+
+        } catch (fetchError) {
+            console.error("Could not reach SIT server, network error.", fetchError);
+            return NextResponse.json({ error: 'Network Error reaching PayLabs API' }, { status: 500 });
+        }
 
     } catch (e: unknown) {
         const errorMsg = e instanceof Error ? e.message : 'Unknown error';
