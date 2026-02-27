@@ -54,7 +54,8 @@ interface QunciContextType {
   updateTransactionStatus: (txId: string, newStatus: Transaction['status']) => void;
   syncOfflineTransactions: (currentState: AppState) => void;
   addOfflineTransaction: (amount: number, merchantId: string) => void;
-  cashOutMerchant: (amount: number) => Promise<boolean>;
+  cashOutMerchant: (amount: number, bankCode: string, accountNo: string, accountName: string) => Promise<boolean>;
+  generateMerchantQR: (amount: number) => Promise<string | null>;
   topUpUser: (amount: number) => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   toast: { msg: string, type: 'success' | 'error' | 'info' } | null;
@@ -210,12 +211,12 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const cashOutMerchant = async (amount: number): Promise<boolean> => {
+  const cashOutMerchant = async (amount: number, bankCode: string, accountNo: string, accountName: string): Promise<boolean> => {
     try {
       const res = await fetch('/api/paylabs/cashout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount })
+        body: JSON.stringify({ amount, bankCode, accountNo, accountName })
       });
 
       if (res.ok) {
@@ -229,6 +230,25 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (e) {
       console.error("Cashout connection failed", e);
       return false;
+    }
+  };
+
+  const generateMerchantQR = async (amount: number): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/paylabs/qris', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.qrisUrl;
+      }
+      return null;
+    } catch (e) {
+      console.error("QRIS generation failed", e);
+      return null;
     }
   };
 
@@ -264,6 +284,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
       syncOfflineTransactions,
       addOfflineTransaction,
       cashOutMerchant,
+      generateMerchantQR,
       topUpUser,
       showToast,
       toast

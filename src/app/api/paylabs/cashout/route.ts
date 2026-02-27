@@ -3,7 +3,7 @@ import { generatePaylabsSignature, generateTimestamp } from '@/lib/paylabs';
 
 export async function POST(request: Request) {
     try {
-        const { amount } = await request.json();
+        const { amount, bankCode, accountNo, accountName } = await request.json();
 
         const merchantId = process.env.PAYLABS_MERCHANT_ID;
         const privateKey = process.env.PAYLABS_PRIVATE_KEY;
@@ -20,7 +20,10 @@ export async function POST(request: Request) {
             merchantId: merchantId,
             requestId: `REQ-${Date.now()}`,
             amount: amount.toString(),
-            // Minimum fields to prove signature generation
+            receiverBankCode: bankCode,
+            receiverAccountNo: accountNo,
+            receiverAccountName: accountName,
+            purpose: "Merchant Settlement"
         };
 
         const endpoint = '/api/v1/disbursement';

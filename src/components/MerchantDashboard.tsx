@@ -12,8 +12,11 @@ const MOCK_ANALYTICS = [
 ];
 
 export default function MerchantDashboard() {
-  const { state, showToast, cashOutMerchant } = useQunci();
+  const { state, showToast, cashOutMerchant, generateMerchantQR } = useQunci();
   const [showQR, setShowQR] = useState(false);
+  const [qrisAmount, setQrisAmount] = useState('');
+  const [qrisUrl, setQrisUrl] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleCashOut = async () => {
     if (state.merchantBalance <= 0) {
@@ -22,14 +25,43 @@ export default function MerchantDashboard() {
     }
     showToast("Requesting Settlement via PayLabs...", "info");
 
-    const success = await cashOutMerchant(state.merchantBalance);
+    // DUMMY DATA explicitly for testing the PayLabs SIT environment. 
+    // In Production this would come from a Merchant Bank Settings Form.
+    const dummyBankCode = "BCA";
+    const dummyAccountNo = "1234567890";
+    const dummyAccountName = "Budi Santoso";
+
+    const success = await cashOutMerchant(state.merchantBalance, dummyBankCode, dummyAccountNo, dummyAccountName);
 
     if (success) {
       showToast("Settlement Successful! Funds transferred to designated bank.", "success");
-      setShowQR(false); // Just a minor UI reset if open
     } else {
       showToast("Settlement encountered an error. Check logs.", "error");
     }
+  };
+
+  const handleGenerateQR = async () => {
+    const amount = Number(qrisAmount);
+    if (amount < 1000) {
+      showToast("Minimum QRIS amount is Rp 1.000", "error");
+      return;
+    }
+    setIsGenerating(true);
+    showToast("Generating QRIS via PayLabs...", "info");
+
+    const url = await generateMerchantQR(amount);
+    if (url) {
+      setQrisUrl(url);
+    } else {
+      showToast("Failed to generate QRIS", "error");
+    }
+    setIsGenerating(false);
+  };
+
+  const closeQRModal = () => {
+    setShowQR(false);
+    setQrisUrl(null);
+    setQrisAmount('');
   };
 
   return (
@@ -43,12 +75,39 @@ export default function MerchantDashboard() {
 
       {showQR && (
         <div className="bg-slate-900 text-white p-6 rounded-2xl flex flex-col items-center justify-center animate-in fade-in slide-in-from-top-4">
-          <div className="bg-white p-4 rounded-xl mb-4">
-            <QrCode size={120} className="text-slate-900" />
-          </div>
-          <h3 className="font-bold text-lg">Merchant ID: WARUNG-SITI-01</h3>
-          <p className="text-slate-400 text-sm mb-4">Show this to customers for offline payment</p>
-          <button onClick={() => setShowQR(false)} className="text-slate-300 hover:text-white text-sm">Close</button>
+
+          {!qrisUrl ? (
+            <div className="w-full max-w-sm flex flex-col items-center">
+              <h3 className="font-bold text-lg mb-4">Create dynamic QRIS</h3>
+              <div className="w-full mb-4">
+                <label className="text-xs text-slate-400 mb-1 block">Nominal (Rp)</label>
+                <input
+                  type="number"
+                  value={qrisAmount}
+                  onChange={(e) => setQrisAmount(e.target.value)}
+                  className="w-full bg-slate-800 text-white border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
+                  placeholder="e.g. 50000"
+                />
+              </div>
+              <button
+                onClick={handleGenerateQR}
+                disabled={isGenerating}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg disabled:opacity-50"
+              >
+                {isGenerating ? "Generating..." : "Generate Code"}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <div className="bg-white p-4 rounded-xl mb-4">
+                <img src={qrisUrl} alt="QRIS Code" className="w-[200px] h-[200px] object-cover" />
+              </div>
+              <h3 className="font-bold text-lg text-emerald-400">Scan to Pay</h3>
+              <p className="text-white font-black text-2xl mt-1 mb-4">Rp {Number(qrisAmount).toLocaleString('id-ID')}</p>
+            </div>
+          )}
+
+          <button onClick={closeQRModal} className="text-slate-400 hover:text-white text-sm mt-4">Close / Cancel</button>
         </div>
       )}
 
