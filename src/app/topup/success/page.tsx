@@ -1,15 +1,27 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQunci } from '@/context/QunciContext';
-
-export const dynamic = 'force-dynamic';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 
 function TopUpSuccessContent() {
     const router = useRouter();
-    const { topUpUser, showToast } = useQunci();
+    const context = useQunci();
+
+    // Guard against null context during SSR
+    if (!context) {
+        return (
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center space-y-4">
+                <Loader2 className="text-blue-500 animate-spin mx-auto" size={32} />
+                <p className="text-slate-500 text-sm">Loading...</p>
+            </div>
+        );
+    }
+
+    const { topUpUser, showToast } = context;
 
     useEffect(() => {
         // Wait for a brief moment to simulate processing

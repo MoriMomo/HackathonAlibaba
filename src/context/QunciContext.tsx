@@ -623,4 +623,10 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const useQunci = () => useContext(QunciContext);
+export const useQunci = () => {
+  const context = useContext(QunciContext);
+  if (!context && typeof window !== 'undefined') {
+    throw new Error('useQunci must be used within a QunciProvider');
+  }
+  return context;
+};
