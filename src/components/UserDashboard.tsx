@@ -14,6 +14,7 @@ import {
   Bell,
   ShieldAlert,
   Lock,
+  Wifi,
   WifiOff,
   Store,
   ScanLine,
@@ -62,7 +63,7 @@ const TransactionItem = ({ icon: Icon, color, merchant, date, amount, status, is
 // --- Main Dashboard Component ---
 
 export default function UserDashboard() {
-  const { state, showToast, addOfflineTransaction, processQRISPayment } = useQunci();
+  const { state, showToast, addOfflineTransaction, processQRISPayment, processTransfer, toggleNetwork, transferToOffline, transferToOnline } = useQunci();
   const [showOfflineCode, setShowOfflineCode] = useState(false);
   const [isScanningQR, setIsScanningQR] = useState(false);
   const [qrisAmount, setQrisAmount] = useState('50000');
@@ -70,8 +71,38 @@ export default function UserDashboard() {
 
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferAmount, setTransferAmount] = useState('');
+  const [vaultTransferAmount, setVaultTransferAmount] = useState('');
   const [transferMerchantId, setTransferMerchantId] = useState('');
+  const [showVerificationInfo, setShowVerificationInfo] = useState(false);
   const transferInputRef = React.useRef<HTMLInputElement>(null);
+
+  const quickTransferUsers = [
+    { id: 'USR-881', name: 'Budi', initial: 'B' },
+    { id: 'MER-992', name: 'Siti', initial: 'S' },
+    { id: 'USR-443', name: 'Agus', initial: 'A' },
+    { id: 'USR-224', name: 'Rina', initial: 'R' }
+  ];
+
+  const handleQuickTransfer = (userId: string) => {
+    setTransferMerchantId(userId);
+    setIsTransferring(true);
+  };
+
+  // Dynamic Insights calculation based on actual transaction history
+  const spendingData = React.useMemo(() => {
+    const baseHeights = [40, 65, 45, 80, 55, 60, 20]; // Baseline weekly graph
+
+    // Calculate total recent spending to animate the "Today" bar
+    const txTotal = state.transactions
+      .filter((t: { type?: string }) => t.type === 'PAYMENT')
+      .reduce((sum: number, t: { amount?: number }) => sum + (t.amount || 0), 0);
+
+    // Every 10k spent adds height to the 'Today' (Sun) column up to 100% max
+    const addedSpend = Math.min(Math.floor(txTotal / 10000), 80);
+    baseHeights[6] = Math.min(baseHeights[6] + addedSpend, 100);
+
+    return baseHeights;
+  }, [state.transactions]);
 
   // Auto-focus input when QR modal opens
   React.useEffect(() => {
@@ -128,14 +159,11 @@ export default function UserDashboard() {
     }
 
     setIsTransferring(false);
-    showToast(`Transferring to ${transferMerchantId}...`, "info");
 
-    setTimeout(() => {
-      // Risk engine applies identically to manual transfers
-      processQRISPayment(amountNum);
-      setTransferAmount('');
-      setTransferMerchantId('');
-    }, 1500);
+    // Pass it to context to handle balance deduction and simulated network delay
+    processTransfer(amountNum, transferMerchantId);
+    setTransferAmount('');
+    setTransferMerchantId('');
   };
 
   const handleOfflinePay = () => {
@@ -189,11 +217,11 @@ export default function UserDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative">
+              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative" title="Notifications" aria-label="View notifications">
                 <Bell size={20} />
                 <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
               </button>
-              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+              <div className="h-8 w-8 rounded-full bg-linear-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
                 B
               </div>
             </div>
@@ -238,7 +266,7 @@ export default function UserDashboard() {
           <div className="lg:col-span-2 space-y-8">
 
             {/* Balance Card */}
-            <div className={`relative overflow-hidden rounded-3xl text-white shadow-xl transition-all duration-500 ${isLocked ? 'bg-red-900 shadow-red-900/20' : 'bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 shadow-blue-900/20'}`}>
+            <div className={`relative overflow-hidden rounded-3xl text-white shadow-xl transition-all duration-500 ${isLocked ? 'bg-red-900 shadow-red-900/20' : 'bg-linear-to-br from-blue-900 via-blue-800 to-indigo-900 shadow-blue-900/20'}`}>
 
               {/* Decorative Circles */}
               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-5 blur-3xl pointer-events-none"></div>
@@ -248,7 +276,13 @@ export default function UserDashboard() {
                 <div className="absolute inset-0 bg-red-900/90 backdrop-blur-md flex flex-col items-center justify-center z-20 p-4 text-center">
                   <Lock size={48} className="mb-4 text-red-200 animate-pulse" />
                   <h3 className="text-2xl font-black tracking-tight">Wallet Locked</h3>
-                  <p className="text-red-200 text-sm mt-2 font-medium max-w-[250px]">Verification required. Suspicious activity detected by Qunci Engine.</p>
+                  <p className="text-red-200 text-sm mt-2 font-medium max-w-62.5">Verification required. Suspicious activity detected by Qunci Engine.</p>
+                  <button
+                    onClick={() => setShowVerificationInfo(true)}
+                    className="mt-6 px-6 py-3 bg-white text-red-900 font-bold rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    How to Get Verified
+                  </button>
                 </div>
               )}
 
@@ -293,7 +327,7 @@ export default function UserDashboard() {
                     />
                   </div>
 
-                  <div className="flex gap-3 w-full max-w-[200px]">
+                  <div className="flex gap-3 w-full max-w-50">
                     <button
                       onClick={() => setIsScanningQR(false)}
                       className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-slate-300 bg-white/5 hover:bg-white/10 transition-colors"
@@ -313,6 +347,143 @@ export default function UserDashboard() {
                 </div>
               )}
 
+              {/* Verification Help Modal */}
+              {showVerificationInfo && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-6 text-center animate-in fade-in duration-200">
+                  <div className="w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[80vh] overflow-y-auto">
+                    <button
+                      onClick={() => setShowVerificationInfo(false)}
+                      className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+                      title="Close"
+                    >
+                      <X size={24} />
+                    </button>
+
+                    <div className="flex justify-center mb-6">
+                      <div className="p-4 bg-red-100 rounded-full">
+                        <ShieldAlert className="text-red-600" size={32} />
+                      </div>
+                    </div>
+
+                    <h2 className="text-2xl font-black text-slate-900 mb-2">Account Verification Required</h2>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-6">Wallet Locked - Follow Steps Below</p>
+
+                    {/* Step by step verification process */}
+                    <div className="space-y-4 text-left mb-8">
+                      <div className="flex gap-4 pb-4 border-b border-slate-200">
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 text-white font-bold text-sm">
+                            1
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-900 mb-1">Contact Customer Service</h3>
+                          <p className="text-sm text-slate-600">Reach out to our support team via any of the channels below within 24 hours</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4 pb-4 border-b border-slate-200">
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 text-white font-bold text-sm">
+                            2
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-900 mb-1">Provide Identity Verification</h3>
+                          <p className="text-sm text-slate-600">Share your KTP/ID, phone number verification, and transaction history</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4 pb-4 border-b border-slate-200">
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 text-white font-bold text-sm">
+                            3
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-900 mb-1">Admin Review & Approval</h3>
+                          <p className="text-sm text-slate-600">Our fraud team will review your account (typically 2-4 hours)</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-emerald-600 text-white font-bold text-sm">
+                            ✓
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-emerald-700 mb-1">Wallet Unlocked</h3>
+                          <p className="text-sm text-slate-600">Your account will be reactivated and you can resume transactions</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Customer Service Contact */}
+                    <div className="bg-slate-50 rounded-2xl p-6 mb-6 border border-slate-200">
+                      <h3 className="font-bold text-slate-900 mb-4 text-left">Contact Customer Service</h3>
+                      <div className="space-y-3 text-left">
+                        <div className="flex items-start gap-3">
+                          <div className="text-blue-600 mt-1">📞</div>
+                          <div>
+                            <p className="font-semibold text-slate-900">Phone Support</p>
+                            <p className="text-sm text-slate-600">+62 21 1234 5678</p>
+                            <p className="text-xs text-slate-500">Available 24/7</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="text-blue-600 mt-1">💬</div>
+                          <div>
+                            <p className="font-semibold text-slate-900">Live Chat</p>
+                            <p className="text-sm text-slate-600">support.qunci.co.id</p>
+                            <p className="text-xs text-slate-500">Average response: 2 minutes</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="text-blue-600 mt-1">📧</div>
+                          <div>
+                            <p className="font-semibold text-slate-900">Email Support</p>
+                            <p className="text-sm text-slate-600">verify@qunci.co.id</p>
+                            <p className="text-xs text-slate-500">Response within 1 hour</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="text-blue-600 mt-1">📍</div>
+                          <div>
+                            <p className="font-semibold text-slate-900">Visit us</p>
+                            <p className="text-sm text-slate-600">Qunci HQ, Jakarta CBD</p>
+                            <p className="text-xs text-slate-500">Business hours 09:00-18:00 WIB</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3">
+                      <a
+                        href="tel:+62212123456789"
+                        className="flex-1 py-3 px-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>📞</span> Call Support
+                      </a>
+                      <a
+                        href="mailto:verify@qunci.co.id"
+                        className="flex-1 py-3 px-4 bg-slate-200 text-slate-900 font-bold rounded-xl hover:bg-slate-300 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>📧</span> Email Now
+                      </a>
+                    </div>
+
+                    <button
+                      onClick={() => setShowVerificationInfo(false)}
+                      className="w-full mt-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Transfer Mock overlay */}
               {isTransferring && !isLocked && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-6 text-center animate-in fade-in duration-200">
@@ -320,6 +491,7 @@ export default function UserDashboard() {
                     <button
                       onClick={() => setIsTransferring(false)}
                       className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+                      title="Close" aria-label="Close transfer dialog"
                     >
                       <X size={24} />
                     </button>
@@ -378,30 +550,101 @@ export default function UserDashboard() {
 
               <div className="relative p-8 z-10">
                 <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-blue-200 text-sm font-medium">Total Balance</p>
-                      {isOffline && (
-                        <div className="flex items-center gap-1.5 bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full text-xs font-bold border border-amber-500/30 backdrop-blur-sm">
-                          <WifiOff size={12} /> Offline Mode
+                  <div className="w-full">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <p className="text-blue-200 text-sm font-medium uppercase tracking-wider">
+                          {isOffline ? "Offline Vault Balance" : "Main Online Balance"}
+                        </p>
+                        {isOffline && (
+                          <div className="flex items-center gap-1.5 bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full text-xs font-bold border border-amber-500/30 backdrop-blur-sm animate-pulse">
+                            <WifiOff size={12} /> SECURE OFFLINE
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Prominent Network Toggle */}
+                      <button
+                        onClick={toggleNetwork}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg ${isOffline ? 'bg-amber-500 hover:bg-amber-400 text-slate-900 shadow-amber-900/50 scale-105' : 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20'}`}
+                      >
+                        {isOffline ? (
+                          <><Wifi size={16} /> Return Online</>
+                        ) : (
+                          <><WifiOff size={16} /> Switch to Offline Vault</>
+                        )}
+                      </button>
+                    </div>
+
+                    <h2 className="text-5xl font-black tracking-tight mb-6">
+                      <span className="text-3xl font-medium text-blue-200 mr-1">Rp</span>
+                      {(isOffline ? state.userOfflineBalance : state.userBalance).toLocaleString('id-ID')}
+                    </h2>
+
+                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-2xl border border-white/10 shadow-inner">
+                      <div>
+                        <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">
+                          {isOffline ? "Online Balance (Locked)" : "Offline Vault Protection"}
+                        </p>
+                        <p className="text-xl font-bold text-white">
+                          <span className="text-sm font-medium text-blue-200 mr-1">Rp</span>
+                          {(isOffline ? state.userBalance : state.userOfflineBalance).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+
+                      {!isOffline && (
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/50 text-xs font-bold">Rp</span>
+                            <input
+                              type="number"
+                              value={vaultTransferAmount}
+                              onChange={(e) => setVaultTransferAmount(e.target.value)}
+                              className="w-24 bg-white/5 border border-white/10 rounded-lg py-1.5 pl-8 pr-2 text-xs font-bold text-white outline-none focus:border-blue-400 placeholder:text-white/30 transition-all"
+                              placeholder="Amount"
+                            />
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              const amt = parseInt(vaultTransferAmount);
+                              if (amt > 0) {
+                                transferToOffline(amt);
+                                setVaultTransferAmount(''); // Reset
+                              }
+                            }}
+                            disabled={!vaultTransferAmount || parseInt(vaultTransferAmount) <= 0}
+                            className="bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-emerald-500/20 flex items-center gap-1"
+                          >
+                            + Add
+                          </button>
+                          <button
+                            onClick={() => {
+                              const amt = parseInt(vaultTransferAmount);
+                              if (amt > 0) {
+                                transferToOnline(amt);
+                                setVaultTransferAmount(''); // Reset
+                              }
+                            }}
+                            disabled={!vaultTransferAmount || parseInt(vaultTransferAmount) <= 0}
+                            className="bg-red-500/20 hover:bg-red-500/40 text-red-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-500/20 flex items-center gap-1"
+                          >
+                            - Withdraw
+                          </button>
                         </div>
                       )}
                     </div>
-                    <h2 className="text-4xl font-bold tracking-tight">Rp {state.userBalance.toLocaleString('id-ID')}</h2>
 
                     {state.pendingBalance > 0 && (
-                      <div className="text-sm font-medium text-amber-300 flex items-center gap-1.5 mt-2 bg-amber-900/30 w-fit px-3 py-1 rounded-lg border border-amber-500/20">
-                        <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span>
-                        Pending Sync: -Rp {state.pendingBalance.toLocaleString('id-ID')}
+                      <div className="text-sm font-bold text-amber-300 flex items-center gap-2 mt-5 bg-amber-900/40 w-fit px-4 py-2 rounded-xl border border-amber-500/30">
+                        <span className="w-2.5 h-2.5 bg-amber-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(251,191,36,1)]"></span>
+                        Pending Sync Risk Validation: -Rp {state.pendingBalance.toLocaleString('id-ID')}
                       </div>
                     )}
                   </div>
-                  <div className="bg-white/10 backdrop-blur-md p-2 rounded-lg border border-white/10">
-                    <Wallet className="text-white" size={24} />
-                  </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 mt-4">
                   <button onClick={handleTopUp} className="flex-1 bg-white text-blue-900 py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
                     <ArrowUpRight size={18} /> Top Up
                   </button>
@@ -416,8 +659,8 @@ export default function UserDashboard() {
                     </button>
                   )}
 
-                  <button onClick={() => setIsTransferring(true)} className="flex-none bg-blue-800/50 text-white p-3 rounded-xl hover:bg-blue-800 transition-colors border border-white/10" title="Transfer">
-                    <Send size={20} />
+                  <button onClick={() => setIsTransferring(true)} className="flex-1 bg-blue-800/50 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 border border-white/10 shadow-lg" title="Transfer">
+                    <Send size={18} /> Transfer
                   </button>
                 </div>
               </div>
@@ -432,17 +675,17 @@ export default function UserDashboard() {
                 </span>
               </div>
 
-              {/* Mock Chart Area */}
+              {/* Dynamic Chart Area */}
               <div className="h-48 w-full relative flex items-end justify-between gap-2">
-                {[40, 65, 45, 80, 55, 90, 70].map((height, i) => (
-                  <div key={i} className="w-full bg-blue-50 rounded-t-md relative group hover:bg-blue-100 transition-colors cursor-pointer" style={{ height: `${height}%` }}>
+                {spendingData.map((height, i) => (
+                  <div key={i} className={`w-full rounded-t-md relative group transition-all duration-500 cursor-pointer ${i === 6 ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-50 hover:bg-blue-100'}`} style={{ height: `${height}%` }}>
                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                       Rp {height * 10}k
                     </div>
                   </div>
                 ))}
                 {/* Gradient Overlay to make it look like a curve */}
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent pointer-events-none"></div>
+                <div className="absolute inset-0 bg-linear-to-t from-white via-transparent to-transparent pointer-events-none"></div>
               </div>
               <div className="flex justify-between mt-2 text-xs text-gray-400">
                 <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
@@ -482,18 +725,22 @@ export default function UserDashboard() {
             </div>
 
             {/* Quick Transfer / Contacts Placeholder */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-lg">
+            <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-lg">
               <h3 className="font-bold mb-4">Quick Transfer</h3>
               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex flex-col items-center gap-2 min-w-[60px] cursor-pointer group">
-                    <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-transparent group-hover:border-blue-400 transition-all flex items-center justify-center text-gray-400 group-hover:text-white">
-                      <span className="font-bold">U{i}</span>
+                {quickTransferUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    onClick={() => handleQuickTransfer(user.id)}
+                    className="flex flex-col items-center gap-2 min-w-15 cursor-pointer group"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-transparent group-hover:border-blue-400 group-hover:scale-110 shadow-lg transition-all flex items-center justify-center text-gray-300 group-hover:text-white group-active:scale-95">
+                      <span className="font-bold">{user.initial}</span>
                     </div>
-                    <span className="text-xs text-gray-400 group-hover:text-white">User {i}</span>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors">{user.name}</span>
                   </div>
                 ))}
-                <div className="flex flex-col items-center gap-2 min-w-[60px] cursor-pointer">
+                <div className="flex flex-col items-center gap-2 min-w-15 cursor-pointer group">
                   <div className="w-12 h-12 rounded-full bg-gray-700/50 border border-dashed border-gray-500 flex items-center justify-center text-gray-400 hover:bg-gray-700 hover:text-white transition-all">
                     <MoreHorizontal size={20} />
                   </div>

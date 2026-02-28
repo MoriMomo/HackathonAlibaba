@@ -1,10 +1,10 @@
 "use client";
 import { useQunci } from '@/context/QunciContext';
-import { Shield, Wifi, WifiOff, Smartphone, Store, ShieldAlert } from 'lucide-react';
+import { Shield, Wifi, WifiOff, Smartphone, Store, ShieldAlert, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { state, switchRole, toggleNetwork } = useQunci();
+  const { state, switchRole, toggleNetwork, logout } = useQunci();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100">
@@ -40,7 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </div>
 
-        {/* Network Toggle */}
+        {/* Actions (Network + Logout) */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
             <span className={state.network === 'ONLINE' ? 'text-emerald-500' : 'text-amber-500'}>
@@ -54,6 +54,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {state.network === 'ONLINE' ? <Wifi size={18} /> : <WifiOff size={18} />}
             </button>
           </div>
+
+          <div className="w-px h-6 bg-slate-200 hidden md:block"></div>
+
+          <button
+            onClick={logout}
+            className="text-slate-500 hover:text-red-500 p-2 md:px-3 md:py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+            title="Disconnect & Return to Login"
+          >
+            <LogOut size={18} />
+            <span className="hidden md:inline">Disconnect</span>
+          </button>
         </div>
       </nav>
 

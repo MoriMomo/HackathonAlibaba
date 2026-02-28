@@ -38,7 +38,7 @@ interface TxData {
 // --- Components ---
 
 const StatCard = ({ title, value, subtext, icon: Icon, color, highlight = false }: StatCardProps) => (
-  <div className={`relative overflow-hidden rounded-2xl p-6 border ${highlight ? 'bg-gradient-to-br from-emerald-50 to-white border-emerald-100 shadow-md shadow-emerald-100/50' : 'bg-white border-gray-100 shadow-sm'}`}>
+  <div className={`relative overflow-hidden rounded-2xl p-6 border ${highlight ? 'bg-linear-to-br from-emerald-50 to-white border-emerald-100 shadow-md shadow-emerald-100/50' : 'bg-white border-gray-100 shadow-sm'}`}>
     <div className="flex justify-between items-start mb-4">
       <div>
         <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
@@ -65,39 +65,39 @@ const TransactionRow = ({ tx }: { tx: TxData }) => {
   const displayDate = tx.timestamp || tx.date || '';
 
   return (
-    <div className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isRisk ? 'bg-red-50 border-red-100' : 'bg-white border-gray-50 hover:border-gray-200'}`}>
+    <div className={`flex items-center justify-between p-5 rounded-2xl transition-all shadow-sm ${isRisk ? 'bg-red-50 border border-red-100' : 'bg-white border border-gray-100'}`}>
       <div className="flex items-center gap-4">
-        <div className={`p-2.5 rounded-full ${isRisk ? 'bg-red-100 text-red-600' : isPending ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-          {isRisk ? <ShieldAlert size={20} /> : isPending ? <Clock size={20} /> : <CheckCircle size={20} />}
+        <div className={`p-3 rounded-full ${isRisk ? 'bg-red-100 text-red-600' : isPending ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+          {isRisk ? <ShieldAlert size={22} /> : isPending ? <Clock size={22} /> : <CheckCircle size={22} />}
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <h4 className="font-semibold text-gray-900 text-sm">{tx.merchant || 'QunciPay User'}</h4>
+          <div className="flex items-center gap-3">
+            <h4 className="font-bold text-gray-900 text-base">{tx.merchant || 'QunciPay User'}</h4>
             {isRisk && (
-              <span className="px-2 py-0.5 bg-red-200 text-red-700 text-[10px] font-bold uppercase rounded-full">
+              <span className="px-2.5 py-1 bg-red-200 text-red-700 text-[10px] font-bold uppercase rounded-full">
                 Risk Hold
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{displayDate} • {tx.id}</p>
+          <p className="text-sm text-gray-500 mt-1">{displayDate} • {tx.id}</p>
           {isRisk && (
-            <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
-              <AlertTriangle size={12} /> Unusual activity detected
+            <p className="text-sm text-red-600 font-medium mt-2 flex items-center gap-1.5">
+              <AlertTriangle size={14} /> Unusual activity detected
             </p>
           )}
         </div>
       </div>
       <div className="text-right">
-        <p className={`font-bold text-sm ${isRisk ? 'text-red-700' : 'text-gray-900'}`}>
+        <p className={`font-black text-lg ${isRisk ? 'text-red-700' : 'text-gray-900'}`}>
           {displayAmount}
         </p>
-        <div className="mt-1">
+        <div className="mt-1.5">
           {isRisk ? (
-            <button className="text-xs font-semibold text-red-600 hover:text-red-700 underline">
+            <button className="text-sm font-bold text-red-600 hover:text-red-700 underline underline-offset-2">
               Resolve Issue
             </button>
           ) : (
-            <span className={`text-[10px] uppercase font-bold ${isPending ? 'text-amber-600' : 'text-emerald-600'}`}>
+            <span className={`text-[11px] uppercase font-bold tracking-wider ${isPending ? 'text-amber-600' : 'text-emerald-600'}`}>
               {tx.status === 'COMPLETED' ? 'Settled' : tx.status}
             </span>
           )}
@@ -113,6 +113,21 @@ export default function MerchantDashboard() {
   const [qrisAmount, setQrisAmount] = useState('');
   const [qrisUrl, setQrisUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showFullReport, setShowFullReport] = useState(false);
+
+  // Dynamic stat calculations
+  const totalSales = React.useMemo(() => {
+    return state.transactions
+      .filter((t: { type?: string, status?: string }) => t.type === 'PAYMENT' && t.status === 'COMPLETED')
+      .reduce((sum: number, t: { amount?: number }) => sum + (t.amount || 0), 0);
+  }, [state.transactions]);
+
+  const pendingSettlement = React.useMemo(() => {
+    return state.transactions
+      .filter((t: { type?: string, status?: string }) => t.type === 'PAYMENT' && (t.status === 'PENDING_SYNC' || t.status === 'PENDING' || t.status === 'RISK_HOLD'))
+      .reduce((sum: number, t: { amount?: number }) => sum + (t.amount || 0), 0);
+  }, [state.transactions]);
 
   const handleCashOut = async () => {
     if (state.merchantBalance <= 0) {
@@ -261,7 +276,7 @@ export default function MerchantDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
             title="Total Sales (Today)"
-            value="Rp 1.250.000"
+            value={`Rp ${totalSales.toLocaleString('id-ID')}`}
             color="bg-blue-500"
             icon={TrendingUp}
             subtext={<span className="text-emerald-600 font-medium flex items-center gap-1"><TrendingUp size={12} /> +12% vs yesterday</span>}
@@ -269,21 +284,25 @@ export default function MerchantDashboard() {
 
           <StatCard
             title="Pending Settlement"
-            value="Rp 150.000"
+            value={`Rp ${pendingSettlement.toLocaleString('id-ID')}`}
             color="bg-amber-500"
             icon={Clock}
             subtext={<span className="text-amber-600 font-medium flex items-center gap-1"><AlertTriangle size={12} /> Auto-settles at 23:59</span>}
           />
 
           <StatCard
-            title="Available for Cash Out"
+            title="Available for Settlement"
             value={`Rp ${state.merchantBalance.toLocaleString('id-ID')}`}
             color="bg-emerald-500"
             icon={Wallet}
             highlight={true}
             subtext={
-              <button onClick={handleCashOut} className="w-full mt-3 bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 flex items-center justify-center gap-2">
-                <ArrowUpRight size={16} /> Cairkan via PayLabs
+              <button
+                onClick={handleCashOut}
+                disabled={state.merchantBalance <= 0}
+                className="w-full mt-3 bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-lg shadow-emerald-200 flex items-center justify-center gap-2"
+              >
+                <ArrowUpRight size={16} /> Tarik Dana Sekarang (Early Withdraw)
               </button>
             }
           />
@@ -303,10 +322,10 @@ export default function MerchantDashboard() {
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900">Qunci AI Insights</h3>
-                    <p className="text-xs text-gray-500">Premium Analytics • <span className="text-indigo-600 cursor-pointer hover:underline">Upgrade for $5/mo</span></p>
+                    <p className="text-xs text-gray-500">Premium Analytics • <span onClick={() => setShowUpgradeModal(true)} className="text-indigo-600 cursor-pointer hover:underline">Upgrade for $5/mo</span></p>
                   </div>
                 </div>
-                <button className="text-sm text-gray-600 font-medium hover:text-gray-900">View Full Report</button>
+                <button onClick={() => setShowFullReport(true)} className="text-sm text-gray-600 font-medium hover:text-gray-900">View Full Report</button>
               </div>
 
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -359,10 +378,12 @@ export default function MerchantDashboard() {
               </div>
 
               <div className="space-y-3">
-                {state.transactions.length > 0 ? (
-                  state.transactions.map((tx: TxData) => (
-                    <TransactionRow key={tx.id} tx={tx} />
-                  ))
+                {state.transactions.filter((tx: TxData) => tx.status === 'PENDING' || tx.merchant === 'Warung Bu Siti').length > 0 ? (
+                  state.transactions
+                    .filter((tx: TxData) => tx.status === 'PENDING' || tx.merchant === 'Warung Bu Siti')
+                    .map((tx: TxData) => (
+                      <TransactionRow key={tx.id} tx={tx} />
+                    ))
                 ) : (
                   <div className="bg-white rounded-xl p-8 text-center text-slate-500 border border-slate-100">
                     No transactions yet. Generate a QR code to receive payments!
@@ -399,28 +420,228 @@ export default function MerchantDashboard() {
               </div>
             </div>
 
-            {/* PayLabs Status */}
+            {/* PayLabs Settlement Status */}
             <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="bg-white/20 p-1.5 rounded-lg">
                     <Wallet size={16} />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-200">PayLabs Connected</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-200">PayLabs Settlement</span>
                 </div>
-                <h3 className="font-bold text-lg mb-2">Auto-Settlement</h3>
-                <p className="text-sm text-blue-200 mb-4">Your pending funds will be automatically transferred to your BCA account ending in 8821 tonight.</p>
-                <button onClick={handleCashOut} className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2 rounded-lg text-sm font-medium transition-colors">
-                  Change Bank Account
-                </button>
+
+                <h3 className="font-bold text-xl mb-1">Auto-Withdrawal Active</h3>
+                <p className="text-xs text-blue-200 mb-5 leading-relaxed">
+                  Semua pendapatan QRIS harian akan dicairkan otomatis ke rekening Anda pada H+1 (hari kerja) pukul 08:00 WIB.
+                </p>
+
+                <div className="bg-black/20 rounded-xl p-4 mb-5 border border-white/10">
+                  <p className="text-[10px] text-blue-300 uppercase tracking-widest font-bold mb-1">Rekening Tujuan</p>
+                  <p className="font-bold text-lg">BCA - 8821 3491 00</p>
+                  <p className="text-xs text-blue-200">A.N Warung Bu Siti</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={handleCashOut} className="flex-1 bg-white hover:bg-blue-50 text-blue-900 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg">
+                    Cairkan Sekarang
+                  </button>
+                  <button className="px-4 bg-white/10 hover:bg-white/20 border border-white/10 text-white py-2.5 rounded-xl text-sm font-medium transition-colors">
+                    Edit Bank
+                  </button>
+                </div>
               </div>
               {/* Decor */}
-              <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-500 rounded-full opacity-20 blur-2xl"></div>
+              <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500 rounded-full opacity-30 blur-3xl"></div>
             </div>
 
           </div>
         </div>
       </main>
+
+      {/* UPGRADE MODAL */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors"
+              aria-label="Close modal"
+            >
+              <MoreHorizontal size={24} className="rotate-90" />
+            </button>
+
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 bg-linear-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                <TrendingUp size={28} className="text-white" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-1.5">Upgrade to Premium Analytics</h3>
+              <p className="text-slate-600 text-xs">Unlock advanced insights and predictive intelligence</p>
+            </div>
+
+            {/* Pricing */}
+            <div className="bg-linear-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 mb-5 border border-indigo-100">
+              <div className="text-center mb-3">
+                <span className="text-4xl font-black text-slate-900">$5</span>
+                <span className="text-slate-600 text-base">/month</span>
+              </div>
+              <p className="text-xs text-center text-slate-600">Billed monthly • Cancel anytime</p>
+            </div>
+
+            {/* Features */}
+            <div className="space-y-2.5 mb-5">
+              {[
+                'Real-time customer behavior analysis',
+                'AI-powered sales predictions',
+                'Advanced fraud detection insights',
+                'Monthly performance reports',
+                'Priority customer support',
+                'Export data to CSV/Excel'
+              ].map((feature, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                    <CheckCircle size={12} className="text-emerald-600" />
+                  </div>
+                  <p className="text-xs text-slate-700 font-medium">{feature}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA Button */}
+            <button
+              onClick={() => {
+                showToast('Payment processing coming soon! This is a demo.', 'info');
+                setShowUpgradeModal(false);
+              }}
+              className="w-full bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-500/30"
+            >
+              Subscribe Now
+            </button>
+
+            <p className="text-xs text-center text-slate-500 mt-3">
+              Secure payment via PayLabs • 7-day money-back guarantee
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* FULL REPORT MODAL */}
+      {showFullReport && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="min-h-screen flex items-center justify-center p-4 py-8">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-6 relative animate-in fade-in zoom-in duration-200">
+              <button
+                onClick={() => setShowFullReport(false)}
+                className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors z-10"
+                aria-label="Close modal"
+              >
+                <MoreHorizontal size={24} className="rotate-90" />
+              </button>
+
+              {/* Header */}
+              <div className="mb-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <BarChart3 size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Qunci AI Full Analytics Report</h3>
+                    <p className="text-slate-600 text-xs">Generated on {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                {[
+                  { label: 'Total Revenue (30d)', value: 'Rp 24,850,000', change: '+18.2%', positive: true },
+                  { label: 'Transaction Volume', value: '1,247', change: '+24.5%', positive: true },
+                  { label: 'Avg. Transaction', value: 'Rp 19,928', change: '-3.1%', positive: false },
+                  { label: 'Peak Hour', value: '19:00 WIB', change: '8PM-10PM', positive: true },
+                  { label: 'Customer Retention', value: '42.3%', change: '+5.8%', positive: true },
+                  { label: 'New Customers', value: '184', change: '+12.4%', positive: true },
+                ].map((metric, i) => (
+                  <div key={i} className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{metric.label}</p>
+                    <p className="text-lg font-black text-slate-900 mb-0.5">{metric.value}</p>
+                    <p className={`text-xs font-bold ${metric.positive ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {metric.change}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Sales Trends Chart */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 mb-5">
+                <h4 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <TrendingUp size={18} className="text-indigo-600" />
+                  30-Day Sales Trend
+                </h4>
+                <div className="h-32 bg-white rounded-xl border border-slate-200 flex items-end justify-between gap-1 p-3">
+                  {[42, 58, 48, 72, 55, 68, 52, 78, 64, 82, 70, 88, 75, 92, 85, 95, 88, 98, 92, 100, 95, 102, 98, 105, 100, 108, 103, 112, 107, 115].map((h, i) => (
+                    <div key={i} className="flex-1 bg-linear-to-t from-indigo-500 to-purple-500 rounded-t-sm opacity-80 hover:opacity-100 transition-opacity" style={{ height: `${(h / 115) * 100}%` }}></div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[10px] text-slate-500 mt-1.5 px-3">
+                  <span>30 days ago</span>
+                  <span>Today</span>
+                </div>
+              </div>
+
+              {/* AI Insights */}
+              <div className="space-y-3 mb-5">
+                <h4 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Users size={18} className="text-indigo-600" />
+                  AI-Powered Insights
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
+                    <h5 className="text-xs font-bold text-indigo-900 mb-1.5">🎯 Customer Behavior</h5>
+                    <p className="text-xs text-indigo-700 leading-relaxed">
+                      Your returning customers spend 38% more on average. Consider launching a loyalty rewards program to boost retention further.
+                    </p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                    <h5 className="text-xs font-bold text-emerald-900 mb-1.5">📈 Growth Opportunity</h5>
+                    <p className="text-xs text-emerald-700 leading-relaxed">
+                      Transaction volume peaks at 19:00. Offering a 7-9PM flash sale could increase revenue by an estimated 15-22%.
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                    <h5 className="text-xs font-bold text-amber-900 mb-1.5">⚠️ Risk Alert</h5>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      2.4% of transactions flagged for unusual patterns. Review held transactions in Admin Console to prevent revenue loss.
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
+                    <h5 className="text-xs font-bold text-purple-900 mb-1.5">🔮 Prediction</h5>
+                    <p className="text-xs text-purple-700 leading-relaxed">
+                      Based on local events and weather data, expect 24% higher traffic this weekend. Stock up inventory accordingly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Options */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => showToast('Export feature coming soon!', 'info')}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download size={14} />
+                  Export as CSV
+                </button>
+                <button
+                  onClick={() => showToast('Print feature coming soon!', 'info')}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download size={14} />
+                  Download PDF Report
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

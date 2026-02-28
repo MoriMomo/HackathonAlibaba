@@ -31,11 +31,22 @@ const openai = new OpenAI({
 });
 
 export async function analyzeTransactionRisk(transactionData: TransactionData): Promise<TransactionRisk> {
-    const systemPrompt = `You are a fraud detection engine. Output ONLY valid JSON.
-  Do not use markdown blocks.
-  Schema: { "riskScore": number, "decision": "APPROVE"|"HOLD"|"REJECT", "reason": "string", "flags": [] }`;
+    // ===== QWEN AI: Real fraud detection =====
+    const systemPrompt = `You are an AI fraud detection engine for QunciPay Indonesia. Analyze financial transactions and return ONLY valid JSON.
+  
+Schema: { "riskScore": number (0-100), "decision": "APPROVE"|"HOLD"|"REJECT", "reason": "Detailed explanation of the assessment", "flags": ["array", "of", "risk", "factors"] }
 
-    const userPrompt = `Analyze this transaction: ${JSON.stringify(transactionData)}`;
+For risk assessment, consider:
+- Transaction amount vs user history average
+- Time of transaction (unusual hours)
+- Location consistency
+- Merchant category
+- Frequency patterns
+- Behavioral anomalies
+
+Provide clear, specific reasons in the "reason" field.`;
+
+    const userPrompt = `Analyze this transaction for fraud risk: ${JSON.stringify(transactionData)}`;
 
     try {
         const completion = await openai.chat.completions.create({
@@ -47,17 +58,14 @@ export async function analyzeTransactionRisk(transactionData: TransactionData): 
             temperature: 0,
         });
 
-        // Extract Content
         let content = completion.choices[0].message.content;
 
         if (!content) {
             throw new Error("No content returned from AI");
         }
 
-        // Clean Markdown (Common Qwen issue)
         content = content.replace(/```json/g, '').replace(/```/g, '').trim();
 
-        // Validate with Zod
         const parsed = JSON.parse(content);
         return {
             transactionId: crypto.randomUUID(),
@@ -67,7 +75,6 @@ export async function analyzeTransactionRisk(transactionData: TransactionData): 
     } catch (error: unknown) {
         console.error("Risk Engine Failure", error);
         const errorMessage = error instanceof Error ? error.message : 'Risk Engine Unavailable';
-        // FAIL CLOSED: If AI breaks, default to HOLD for safety
         return {
             transactionId: crypto.randomUUID(),
             riskScore: 100,
@@ -76,4 +83,5 @@ export async function analyzeTransactionRisk(transactionData: TransactionData): 
             flags: ['SYSTEM_ERROR']
         };
     }
+
 }
