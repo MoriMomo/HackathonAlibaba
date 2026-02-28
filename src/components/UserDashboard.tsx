@@ -12,10 +12,13 @@ import {
   AlertCircle,
   MoreHorizontal,
   Bell,
+  ShieldAlert,
   Lock,
   WifiOff,
   Store,
-  ScanLine
+  ScanLine,
+  Clock,
+  X
 } from 'lucide-react';
 
 // --- Sub-Components for Cleanliness ---
@@ -63,6 +66,27 @@ export default function UserDashboard() {
   const [showOfflineCode, setShowOfflineCode] = useState(false);
   const [isScanningQR, setIsScanningQR] = useState(false);
   const [qrisAmount, setQrisAmount] = useState('50000');
+  const qrInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferMerchantId, setTransferMerchantId] = useState('');
+  const transferInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Auto-focus input when QR modal opens
+  React.useEffect(() => {
+    if (isScanningQR && qrInputRef.current) {
+      qrInputRef.current.focus();
+      qrInputRef.current.select();
+    }
+  }, [isScanningQR]);
+
+  // Auto-focus input when Transfer modal opens
+  React.useEffect(() => {
+    if (isTransferring && transferInputRef.current) {
+      transferInputRef.current.focus();
+    }
+  }, [isTransferring]);
 
   const isOffline = state.network === 'OFFLINE';
   const isLocked = state.walletLocked;
@@ -89,6 +113,28 @@ export default function UserDashboard() {
     // Simulate slight network delay
     setTimeout(() => {
       processQRISPayment(amountNum);
+    }, 1500);
+  };
+
+  const confirmTransfer = () => {
+    const amountNum = parseInt(transferAmount, 10);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      showToast("Please enter a valid amount", "error");
+      return;
+    }
+    if (!transferMerchantId.trim()) {
+      showToast("Please enter a Merchant ID", "error");
+      return;
+    }
+
+    setIsTransferring(false);
+    showToast(`Transferring to ${transferMerchantId}...`, "info");
+
+    setTimeout(() => {
+      // Risk engine applies identically to manual transfers
+      processQRISPayment(amountNum);
+      setTransferAmount('');
+      setTransferMerchantId('');
     }, 1500);
   };
 
@@ -217,20 +263,33 @@ export default function UserDashboard() {
 
               {/* QRIS Scanning Mock overlay */}
               {isScanningQR && !isLocked && (
-                <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-xl flex flex-col items-center justify-center z-30 p-6 text-center animate-in fade-in zoom-in duration-300">
+                <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-xl flex flex-col items-center justify-center z-50 p-6 text-center animate-in fade-in zoom-in duration-300">
                   <ScanLine size={48} className="text-emerald-400 mb-4 animate-pulse" />
                   <h3 className="text-xl font-bold text-white mb-2">Scan QRIS</h3>
                   <p className="text-slate-300 text-sm mb-6">Enter the amount to simulate a merchant scan:</p>
 
-                  <div className="flex bg-white/10 rounded-xl overflow-hidden mb-6 border border-white/20 w-fit focus-within:border-emerald-400 transition-colors">
-                    <span className="px-4 py-3 bg-white/5 text-slate-300 font-bold border-r border-white/10">Rp</span>
+                  <div className="flex bg-gray-800 rounded-xl overflow-hidden mb-6 border border-gray-600 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400 transition-all max-w-xs mx-auto shadow-2xl">
+                    <span className="px-4 py-3 bg-gray-700 text-slate-300 font-bold border-r border-gray-600 select-none">Rp</span>
                     <input
-                      type="number"
+                      ref={qrInputRef}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={qrisAmount}
-                      onChange={(e) => setQrisAmount(e.target.value)}
-                      className="bg-transparent text-white font-bold text-xl px-4 py-3 outline-none w-32 placeholder:text-slate-500"
-                      placeholder="0"
-                      autoFocus
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setQrisAmount(val);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          confirmQRISPayment();
+                        }
+                      }}
+                      className="bg-gray-800 text-white font-bold text-xl px-4 py-3 outline-none w-full placeholder:text-gray-500 caret-emerald-400"
+                      placeholder="50000"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck="false"
                     />
                   </div>
 
@@ -243,9 +302,75 @@ export default function UserDashboard() {
                     </button>
                     <button
                       onClick={confirmQRISPayment}
-                      className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
+                      disabled={!qrisAmount || parseInt(qrisAmount) <= 0}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
                     >
                       Pay
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-500 mt-4">Press Enter to confirm</p>
+                </div>
+              )}
+
+              {/* Transfer Mock overlay */}
+              {isTransferring && !isLocked && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-6 text-center animate-in fade-in duration-200">
+                  <div className="w-full max-w-sm bg-slate-100 rounded-2xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+                    <button
+                      onClick={() => setIsTransferring(false)}
+                      className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+
+                    <h3 className="text-xl font-bold text-slate-800 mb-6 text-left">Pay by Merchant ID</h3>
+
+                    <div className="space-y-4 text-left">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Merchant ID</label>
+                        <input
+                          type="text"
+                          value={transferMerchantId}
+                          onChange={(e) => setTransferMerchantId(e.target.value.toUpperCase())}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-slate-400"
+                          placeholder="e.g. QUNCI_MERCHANT_8829"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Amount (Rp)</label>
+                        <div className="relative flex bg-white border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-600 transition-all">
+                          <span className="px-4 py-3 text-slate-500 font-medium border-r border-slate-100 bg-slate-50">Rp</span>
+                          <input
+                            ref={transferInputRef}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={transferAmount}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setTransferAmount(val);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                confirmTransfer();
+                              }
+                            }}
+                            className="bg-transparent text-slate-900 font-bold px-4 py-3 outline-none w-full placeholder:text-slate-300"
+                            placeholder="0"
+                            autoComplete="off"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={confirmTransfer}
+                      disabled={!transferAmount || parseInt(transferAmount) <= 0 || !transferMerchantId.trim()}
+                      className="w-full mt-6 py-3.5 rounded-xl text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(29,78,216,0.39)] transition-all"
+                    >
+                      Confirm Payment
                     </button>
                   </div>
                 </div>
@@ -291,7 +416,7 @@ export default function UserDashboard() {
                     </button>
                   )}
 
-                  <button className="flex-none bg-blue-800/50 text-white p-3 rounded-xl hover:bg-blue-800 transition-colors border border-white/10" title="Transfer">
+                  <button onClick={() => setIsTransferring(true)} className="flex-none bg-blue-800/50 text-white p-3 rounded-xl hover:bg-blue-800 transition-colors border border-white/10" title="Transfer">
                     <Send size={20} />
                   </button>
                 </div>
@@ -341,8 +466,8 @@ export default function UserDashboard() {
                   state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').map((tx: { id: string, status: string, merchant?: string, timestamp: string, amount: number }) => (
                     <TransactionItem
                       key={tx.id}
-                      icon={tx.status === 'RISK_HOLD' ? Lock : Store}
-                      color={tx.status === 'RISK_HOLD' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600"}
+                      icon={tx.status === 'RISK_HOLD' ? ShieldAlert : (tx.status === 'PENDING_SYNC' ? Clock : Store)}
+                      color={tx.status === 'RISK_HOLD' ? "bg-red-100 text-red-600" : (tx.status === 'PENDING_SYNC' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-600")}
                       merchant={tx.merchant || "Unknown Merchant"}
                       date={tx.timestamp}
                       amount={tx.amount}

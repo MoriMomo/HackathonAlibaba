@@ -56,7 +56,7 @@ interface QunciContextType {
   addOfflineTransaction: (amount: number, merchantId: string) => void;
   cashOutMerchant: (amount: number, bankCode: string, accountNo: string, accountName: string) => Promise<boolean>;
   generateMerchantQR: (amount: number) => Promise<string | null>;
-  processQRISPayment: (amount: number) => boolean;
+  processQRISPayment: (amount: number) => Promise<boolean>;
   topUpUser: (amount: number) => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   toast: { msg: string, type: 'success' | 'error' | 'info' } | null;
@@ -132,13 +132,39 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const syncOfflineTransactions = (currentState: AppState) => {
+  const syncOfflineTransactions = async (currentState: AppState) => {
     const pendingTxs = currentState.transactions.filter(t => t.status === 'PENDING_SYNC');
     if (pendingTxs.length === 0) return;
 
     showToast("Syncing offline transactions with Qunci Engine...", "info");
 
-    setTimeout(() => {
+    try {
+      // Call real AI API for each pending transaction
+      const riskResults = await Promise.all(pendingTxs.map(async (t) => {
+        const transactionData = {
+          userId: 'usr_budi_123',
+          amount: t.amount,
+          merchant: t.merchant || 'Offline QR',
+          timestamp: t.timestamp || new Date().toISOString(),
+          location: 'Jakarta, ID',
+          userHistory: {
+            avgTransaction: 150000,
+            lastLogin: new Date().toISOString(),
+            typicalLocation: 'Jakarta, ID',
+          },
+        };
+
+        const res = await fetch('/api/risk/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(transactionData),
+        });
+
+        if (!res.ok) throw new Error('Risk assessment API failed');
+        const data = await res.json();
+        return { txId: t.id, data, amount: t.amount };
+      }));
+
       setState(prev => {
         let newlyLocked = false;
         let mdrAccumulator = 0;
@@ -147,31 +173,30 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         const syncedTxs = prev.transactions.map(t => {
           if (t.status !== 'PENDING_SYNC') return t;
 
-          // AI Risk check simulation
-          const hour = new Date().getHours();
-          const isLateNight = hour < 5 || hour > 22;
-          let score = 5;
-          const reasons: string[] = [];
+          const resultObj = riskResults.find(r => r.txId === t.id);
+          if (!resultObj) return t;
 
-          if (t.amount > 1000000) {
-            score += 65;
-            reasons.push("Anomali Nominal Tinggi (+65)");
-          }
-          if (isLateNight) {
-            score += 20;
-            reasons.push("Waktu Transaksi Tidak Wajar (+20)");
-          }
+          const riskResult = resultObj.data;
 
-          if (score > 60) {
+          if (riskResult.decision === 'HOLD' || riskResult.decision === 'REJECT') {
             newlyLocked = true;
-            return { ...t, status: 'RISK_HOLD' as Transaction['status'], riskScore: score, riskReasons: reasons };
+            const reasons = riskResult.flags && riskResult.flags.length > 0
+              ? riskResult.flags
+              : [riskResult.reason || "Suspicious Activity Detected"];
+
+            return {
+              ...t,
+              status: 'RISK_HOLD' as Transaction['status'],
+              riskScore: riskResult.riskScore,
+              riskReasons: reasons
+            };
           }
 
           // If approved
           mdrAccumulator += (t.amount - (t.amount * 0.015)); // 1.5% MDR
           earnedPoints += Math.floor(t.amount / 1000); // 1 point per 1000
 
-          return { ...t, status: 'COMPLETED' as Transaction['status'], riskScore: score };
+          return { ...t, status: 'COMPLETED' as Transaction['status'], riskScore: riskResult.riskScore };
         });
 
         if (newlyLocked) {
@@ -189,7 +214,10 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           walletLocked: newlyLocked ? true : prev.walletLocked
         };
       });
-    }, 2000);
+    } catch (e) {
+      console.error("Sync error:", e);
+      showToast("Sync failed. Risk Engine unavailable.", "error");
+    }
   };
 
   const addOfflineTransaction = (amount: number, merchantStr: string) => {
@@ -253,38 +281,84 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const processQRISPayment = (amount: number): boolean => {
-    let success = false;
-    setState(prev => {
-      if (prev.userBalance < amount) {
-        showToast("Insufficient Balance for QRIS payment.", "error");
-        return prev;
-      }
+  const processQRISPayment = async (amount: number): Promise<boolean> => {
+    if (state.userBalance < amount) {
+      showToast("Insufficient Balance for QRIS payment.", "error");
+      return false;
+    }
 
-      success = true;
-      const mdrFee = amount * 0.015; // 1.5% MDR deduction for merchant
-      const settlementAmount = amount - mdrFee;
+    try {
+      showToast("Analyzing transaction risk...", "info");
 
-      const newTx: Transaction = {
-        id: `tx_qris_${Date.now()}`,
-        type: 'PAYMENT',
+      const transactionData = {
+        userId: 'usr_budi_123',
         amount: amount,
-        status: 'COMPLETED',
         merchant: 'Qunci Merchant (QRIS)',
-        timestamp: new Date().toLocaleString(),
-        riskScore: 5 // Low risk default
+        timestamp: new Date().toISOString(),
+        location: 'Jakarta, ID',
+        userHistory: {
+          avgTransaction: 150000,
+          lastLogin: new Date().toISOString(),
+          typicalLocation: 'Jakarta, ID',
+        },
       };
 
-      showToast(`QRIS Payment of Rp ${amount.toLocaleString('id-ID')} Successful!`, "success");
+      const res = await fetch('/api/risk/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(transactionData),
+      });
 
-      return {
-        ...prev,
-        userBalance: prev.userBalance - amount,
-        merchantBalance: prev.merchantBalance + settlementAmount,
-        transactions: [newTx, ...prev.transactions]
-      };
-    });
-    return success;
+      if (!res.ok) throw new Error('Risk assessment API failed');
+      const riskResult = await res.json();
+
+      setState(prev => {
+        const mdrFee = amount * 0.015; // 1.5% MDR deduction for merchant
+        const settlementAmount = amount - mdrFee;
+
+        let status: Transaction['status'] = 'COMPLETED';
+        let newlyLocked = false;
+        const reasons = riskResult.flags && riskResult.flags.length > 0
+          ? riskResult.flags
+          : [riskResult.reason || "Suspicious Activity Detected"];
+
+        if (riskResult.decision === 'HOLD' || riskResult.decision === 'REJECT') {
+          status = 'RISK_HOLD';
+          newlyLocked = true;
+        }
+
+        const newTx: Transaction = {
+          id: `tx_qris_${Date.now()}`,
+          type: 'PAYMENT',
+          amount: amount,
+          status: status,
+          merchant: 'Qunci Merchant (QRIS)',
+          timestamp: new Date().toLocaleString(),
+          riskScore: riskResult.riskScore,
+          riskReasons: status === 'RISK_HOLD' ? reasons : undefined
+        };
+
+        if (newlyLocked) {
+          setTimeout(() => showToast(`Payment Held by QunciGuard: ${riskResult.reason}`, "error"), 500);
+        } else {
+          showToast(`QRIS Payment of Rp ${amount.toLocaleString('id-ID')} Successful!`, "success");
+        }
+
+        return {
+          ...prev,
+          userBalance: status === 'COMPLETED' ? prev.userBalance - amount : prev.userBalance, // Deduct only if completed
+          merchantBalance: status === 'COMPLETED' ? prev.merchantBalance + settlementAmount : prev.merchantBalance,
+          walletLocked: newlyLocked ? true : prev.walletLocked,
+          transactions: [newTx, ...prev.transactions]
+        };
+      });
+
+      return true;
+    } catch (e) {
+      console.error("QRIS Payment error:", e);
+      showToast("Payment failed. Risk Engine unavailable.", "error");
+      return false;
+    }
   };
 
   const topUpUser = (amount: number) => {
