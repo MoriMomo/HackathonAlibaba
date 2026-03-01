@@ -274,6 +274,36 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         return prev;
       }
 
+      // Calculate offline transaction limit based on Oke Score
+      // Base score 10 = Rp 100,000. Each 10 points = +Rp 100,000.
+      // So limit = (okeScore / 10) * 100_000, which simplifies to okeScore * 10_000
+      const currentLimit = prev.okeScore * 10000;
+
+      if (amount > currentLimit) {
+        showToast(`Offline Payment Declined! Amount exceeds your current Oke Score limit of Rp ${currentLimit.toLocaleString('id-ID')}`, "error");
+
+        // Log the failed attempt and deduct 5 points as per rules
+        const failedTx: Transaction = {
+          id: `tx_off_fail_${Date.now()}`,
+          type: 'PAYMENT',
+          amount,
+          status: 'FAILED',
+          merchant: merchantStr,
+          timestamp: new Date().toLocaleString(),
+          riskReason: 'Offline payment exceeded Oke Score dynamic limit.'
+        };
+
+        const newScore = Math.max(10, prev.okeScore - 5);
+
+        showToast(`Oke Score dropped by 5 points due to failed offline transaction.`, "info");
+
+        return {
+          ...prev,
+          okeScore: newScore,
+          transactions: [failedTx, ...prev.transactions]
+        };
+      }
+
       const newTx: Transaction = {
         id: `tx_off_${Date.now()}`,
         type: 'PAYMENT',
@@ -460,14 +490,16 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         };
 
         let newScore = prev.okeScore;
-        if (status === 'COMPLETED' && amount >= 20000) {
-          newScore = Math.min(100, newScore + 1);
+        let earnedPoints = 0;
+        if (status === 'COMPLETED') {
+          earnedPoints = Math.floor(amount / 1000);
+          if (amount >= 20000) newScore = Math.min(100, newScore + 1);
         }
 
         if (newlyLocked) {
           setTimeout(() => showToast(`Payment Held by QunciGuard: ${riskResult.reason}`, "error"), 500);
         } else {
-          showToast(`QRIS Payment of Rp ${amount.toLocaleString('id-ID')} Successful!`, "success");
+          showToast(`QRIS Payment of Rp ${amount.toLocaleString('id-ID')} Successful! +${earnedPoints} Points!`, "success");
         }
 
         return {
@@ -476,7 +508,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           merchantBalance: status === 'COMPLETED' ? prev.merchantBalance + settlementAmount : prev.merchantBalance,
           walletLocked: newlyLocked ? true : prev.walletLocked,
           transactions: [newTx, ...prev.transactions],
-          okeScore: newScore
+          okeScore: newScore,
+          points: prev.points + earnedPoints
         };
       });
 
@@ -578,8 +611,10 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         // If offline, deduct from offline balance immediately (pending sync)
         const shouldDeductOnline = !isOffline && status === 'COMPLETED';
         let newScore = prev.okeScore;
-        if (shouldDeductOnline && amount >= 20000) {
-          newScore = Math.min(100, newScore + 1);
+        let earnedPoints = 0;
+        if (shouldDeductOnline) {
+          earnedPoints = Math.floor(amount / 1000);
+          if (amount >= 20000) newScore = Math.min(100, newScore + 1);
         }
 
         return {
@@ -591,7 +626,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           merchantBalance: (isBuSiti && shouldDeductOnline) ? prev.merchantBalance + amount : prev.merchantBalance,
           walletLocked: newlyLocked ? true : prev.walletLocked,
           transactions: [newTx, ...prev.transactions],
-          okeScore: newScore
+          okeScore: newScore,
+          points: prev.points + earnedPoints
         };
       });
 

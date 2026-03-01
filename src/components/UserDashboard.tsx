@@ -701,96 +701,116 @@ export default function UserDashboard() {
                     <Send size={18} /> Transfer
                   </button>
                 </div>
-              </div>
-            </div>
 
-            {/* Spending Insights */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-900 dark:text-white">Spending Insights</h3>
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md">
-                  AI: -20% vs last month
-                </span>
-              </div>
-
-              {/* Dynamic Chart Area */}
-              <div className="h-48 w-full relative flex items-end justify-between gap-2">
-                {spendingData.map((data: { height: number; amount: number }, i: number) => (
-                  <div key={i} className={`w-full rounded-t-md relative group transition-all duration-500 cursor-pointer ${i === 6 ? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500' : 'bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700'}`} style={{ height: `${data.height}%` }}>
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1.5 px-2.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 flex flex-col items-center gap-0.5">
-                      <span className="font-bold">Rp {data.amount.toLocaleString('id-ID')}</span>
-                      <div className="w-2 h-2 bg-gray-900 rotate-45 absolute -bottom-1"></div>
+                {/* Subdued Points Liquidation Bar */}
+                <div className="mt-4 flex flex-row justify-between items-center bg-white/5 border border-white/10 rounded-xl p-3 shadow-inner">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-amber-500/10 p-1.5 rounded-md border border-amber-500/20">
+                      <TrendingUp className="text-amber-400 w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-200 tracking-wider">AVAILABLE POINTS</p>
+                      <p className="font-bold text-sm text-amber-300">{state.points.toLocaleString('id-ID')} <span className="text-[10px] font-normal text-amber-300/80">pts</span></p>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-400 dark:text-slate-500">
-                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-              </div>
-            </div>
 
-          </div>
-
-          {/* RIGHT COLUMN (Sidebar/Activity) */}
-          <div className="space-y-6">
-
-            {/* Recent Activity Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
-              <div className="p-6 border-b border-gray-50 dark:border-slate-800/50 flex justify-between items-center">
-                <h3 className="font-bold text-gray-900 dark:text-white">Recent Activity</h3>
-                <button className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">View All</button>
-              </div>
-
-              <div className="divide-y divide-gray-50 dark:divide-slate-800/50">
-                {state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').length > 0 ? (
-                  state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').map((tx: { id: string, status: string, merchant?: string, timestamp: string, amount: number }) => (
-                    <TransactionItem
-                      key={tx.id}
-                      icon={tx.status === 'RISK_HOLD' ? ShieldAlert : (tx.status === 'PENDING_SYNC' ? Clock : Store)}
-                      color={tx.status === 'RISK_HOLD' ? "bg-red-100 text-red-600" : (tx.status === 'PENDING_SYNC' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-600")}
-                      merchant={tx.merchant || "Unknown Merchant"}
-                      date={tx.timestamp}
-                      amount={tx.amount}
-                      status={tx.status}
-                      isHeld={tx.status === 'RISK_HOLD'}
-                    />
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-sm text-gray-500 dark:text-slate-400">No recent transactions.</div>
-                )}
-              </div>
-            </div>
-
-            {/* Quick Transfer / Contacts Placeholder */}
-            <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-lg">
-              <h3 className="font-bold mb-4">Quick Transfer</h3>
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
-                {quickTransferUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    onClick={() => handleQuickTransfer(user.id)}
-                    className="flex flex-col items-center gap-2 min-w-15 cursor-pointer group"
+                  <button
+                    onClick={() => {
+                      if (state.points > 0) {
+                        if (confirm(`Convert ${state.points.toLocaleString('id-ID')} points into Rp ${state.points.toLocaleString('id-ID')} wallet balance?`)) {
+                          liquidatePoints(state.points);
+                        }
+                      } else {
+                        showToast("You have 0 points to liquidate.", "info");
+                      }
+                    }}
+                    disabled={state.points <= 0}
+                    className="bg-amber-500 hover:bg-amber-400 disabled:bg-amber-500/30 text-white disabled:text-white/50 py-1.5 px-4 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-md shadow-amber-900/20"
                   >
-                    <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-transparent group-hover:border-blue-400 group-hover:scale-110 shadow-lg transition-all flex items-center justify-center text-gray-300 group-hover:text-white group-active:scale-95">
-                      <span className="font-bold">{user.initial}</span>
-                    </div>
-                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors">{user.name}</span>
-                  </div>
-                ))}
-                <div className="flex flex-col items-center gap-2 min-w-15 cursor-pointer group">
-                  <div className="w-12 h-12 rounded-full bg-gray-700/50 border border-dashed border-gray-500 flex items-center justify-center text-gray-400 hover:bg-gray-700 hover:text-white transition-all">
-                    <MoreHorizontal size={20} />
-                  </div>
-                  <span className="text-xs text-gray-400">More</span>
+                    Redeem Cash
+                  </button>
                 </div>
               </div>
             </div>
+          </div>
 
+          {/* Spending Insights */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-gray-900 dark:text-white">Spending Insights</h3>
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md">
+                AI: -20% vs last month
+              </span>
+            </div>
+
+            {/* Dynamic Chart Area */}
+            <div className="h-48 w-full relative flex items-end justify-between gap-2">
+              {spendingData.map((data: { height: number; amount: number }, i: number) => (
+                <div key={i} className={`w-full rounded-t-md relative group transition-all duration-500 cursor-pointer ${i === 6 ? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500' : 'bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700'}`} style={{ height: `${data.height}%` }}>
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1.5 px-2.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 flex flex-col items-center gap-0.5">
+                    <span className="font-bold">Rp {data.amount.toLocaleString('id-ID')}</span>
+                    <div className="w-2 h-2 bg-gray-900 rotate-45 absolute -bottom-1"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-gray-400 dark:text-slate-500">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN (Sidebar/Activity) */}
+        <div className="space-y-6">
+
+          {/* Recent Activity Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800/50 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900 dark:text-white">Recent Activity</h3>
+              <button className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">View All</button>
+            </div>
+
+            <div className="divide-y divide-gray-50 dark:divide-slate-800/50">
+              {state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').length > 0 ? (
+                state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').map((tx: { id: string, status: string, merchant?: string, timestamp: string, amount: number }) => (
+                  <TransactionItem
+                    key={tx.id}
+                    icon={tx.status === 'RISK_HOLD' ? ShieldAlert : (tx.status === 'PENDING_SYNC' ? Clock : Store)}
+                    color={tx.status === 'RISK_HOLD' ? "bg-red-100 text-red-600" : (tx.status === 'PENDING_SYNC' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-600")}
+                    merchant={tx.merchant || "Unknown Merchant"}
+                    date={tx.timestamp}
+                    amount={tx.amount}
+                    status={tx.status}
+                    isHeld={tx.status === 'RISK_HOLD'}
+                  />
+                ))
+              ) : (
+                <div className="p-4 text-center text-sm text-gray-500 dark:text-slate-400">No recent transactions.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Transfer / Contacts Placeholder */}
+          <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-lg">
+            <h3 className="font-bold mb-4">Quick Transfer</h3>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
+              {quickTransferUsers.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => handleQuickTransfer(user.id)}
+                  className="flex flex-col items-center gap-2 min-w-15 cursor-pointer group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-transparent group-hover:border-blue-400 group-hover:scale-110 shadow-lg transition-all flex items-center justify-center text-gray-300 group-hover:text-white group-active:scale-95">
+                    <span className="font-bold">{user.initial}</span>
+                  </div>
+                  <span className="text-xs text-gray-400 group-hover:text-white transition-colors">{user.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </main>
     </div>
   );
 }
-
-
