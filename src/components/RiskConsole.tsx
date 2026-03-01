@@ -1,7 +1,6 @@
 "use client";
 import { useQunci } from '@/context/QunciContext';
 import { Activity, ShieldAlert, Lock, Check, X, Cpu, Users, Eye, Server, AlertTriangle, Sparkles, Loader, MessageCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
 export default function RiskConsole() {
@@ -35,35 +34,35 @@ export default function RiskConsole() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <Cpu className="text-blue-600" /> QunciPay Admin Center
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Cpu className="text-blue-600 dark:text-blue-500" /> QunciPay Admin Center
           </h2>
-          <p className="text-slate-500 font-medium">Global Fraud Operations & Network Management</p>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Global Fraud Operations & Network Management</p>
         </div>
-        <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">
+        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-800 shadow-sm">
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
           </span>
-          <span className="text-xs font-bold text-emerald-800 tracking-wider">NETWORK ONLINE</span>
+          <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 tracking-wider">NETWORK ONLINE</span>
         </div>
       </div>
 
       {/* Admin Quick Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Network Uptime', value: '99.98%', icon: Server, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Active Users', value: '+24,812', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          { label: 'Monitored Txs (24h)', value: '1.2M', icon: Eye, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-          { label: 'Threats Blocked', value: '842', icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-50' },
+          { label: 'Network Uptime', value: '99.98%', icon: Server, color: 'text-blue-500 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
+          { label: 'Active Users', value: '+24,812', icon: Users, color: 'text-emerald-500 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+          { label: 'Monitored Txs (24h)', value: '1.2M', icon: Eye, color: 'text-indigo-500 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' },
+          { label: 'Threats Blocked', value: '842', icon: ShieldAlert, color: 'text-red-500 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30' },
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div key={i} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 transition-colors">
             <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
               <stat.icon size={20} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{stat.label}</p>
-              <p className="text-xl font-black text-slate-900">{stat.value}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{stat.label}</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white">{stat.value}</p>
             </div>
           </div>
         ))}
@@ -179,55 +178,55 @@ export default function RiskConsole() {
         </div>
 
         {/* Right Column: User Management */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm flex flex-col transition-colors">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-slate-100 rounded-lg text-slate-700">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-400">
               <Users size={20} />
             </div>
-            <h3 className="font-bold text-lg text-slate-900">User Management</h3>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white">User Management</h3>
           </div>
 
           <div className="flex-1 space-y-6">
             {/* Active Profile Info */}
-            <div className="p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
+            <div className="p-5 bg-gradient-to-br from-slate-50 dark:from-slate-800/80 to-slate-100 dark:to-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className="font-black text-slate-800 block text-lg">Budi Santoso</span>
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1 block">ID: USR_882910</span>
+                  <span className="font-black text-slate-800 dark:text-white block text-lg">Budi Santoso</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1 block">ID: USR_882910</span>
                 </div>
-                <span className="text-xs font-bold bg-blue-100 text-blue-800 px-3 py-1 rounded-full shadow-sm">Standard</span>
+                <span className="text-xs font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 px-3 py-1 rounded-full shadow-sm">Standard</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200">
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Account Status</p>
-                  <p className={`text-sm font-bold ${state.walletLocked ? 'text-red-600' : 'text-emerald-600'}`}>{state.walletLocked ? 'FROZEN' : 'ACTIVE'}</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Account Status</p>
+                  <p className={`text-sm font-bold ${state.walletLocked ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{state.walletLocked ? 'FROZEN' : 'ACTIVE'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Risk Rating</p>
-                  <p className="text-sm font-bold text-amber-600">MODERATE</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Risk Rating</p>
+                  <p className="text-sm font-bold text-amber-600 dark:text-amber-500">MODERATE</p>
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="space-y-4 pt-4">
-              <label className="text-[11px] font-black tracking-widest text-slate-400 uppercase">Emergency Protocol</label>
+              <label className="text-[11px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Emergency Protocol</label>
 
               <button
                 onClick={() => lockWallet(!state.walletLocked)}
                 className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${state.walletLocked
-                  ? 'bg-gradient-to-b from-red-50 to-red-100 text-red-700 border border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm'
-                  : 'bg-gradient-to-b from-slate-800 to-slate-900 text-white hover:from-slate-700 hover:to-slate-800 shadow-md shadow-slate-900/10'
+                  ? 'bg-gradient-to-b from-red-50 dark:from-red-900/30 to-red-100 dark:to-red-900/50 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:from-red-100 hover:to-red-200 dark:hover:to-red-900 shadow-sm'
+                  : 'bg-gradient-to-b from-slate-800 to-slate-900 dark:from-blue-600 dark:to-blue-700 text-white hover:from-slate-700 hover:to-slate-800 shadow-md shadow-slate-900/10'
                   }`}
               >
                 <Lock size={18} />
                 {state.walletLocked ? 'Lift Wallet Freeze' : 'Initiate Wallet Freeze'}
               </button>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <p className="text-xs text-slate-500 text-center leading-relaxed">
-                  <strong className="text-slate-700">Warning:</strong> Freezing the wallet will instantly block all online and offline transactions, QR generation, and P2P transfers until a manual audit is completed.
+              <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center leading-relaxed">
+                  <strong className="text-slate-700 dark:text-slate-300">Warning:</strong> Freezing the wallet will instantly block all online and offline transactions, QR generation, and P2P transfers until a manual audit is completed.
                 </p>
               </div>
             </div>
@@ -238,23 +237,23 @@ export default function RiskConsole() {
 
       {/* PENDING VERIFICATION REQUESTS */}
       {state.walletLocked && (
-        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-3xl border border-orange-200 p-8 shadow-sm">
+        <div className="bg-gradient-to-br from-orange-50 dark:from-orange-900/20 to-red-50 dark:to-red-900/10 rounded-3xl border border-orange-200 dark:border-orange-800/50 p-8 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-orange-100 rounded-lg text-orange-700 animate-pulse">
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/40 rounded-lg text-orange-700 dark:text-orange-400 animate-pulse">
               <ShieldAlert size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-slate-900">Pending Verification Requests</h3>
-              <p className="text-xs text-slate-600 mt-1">Users with locked wallets awaiting identity verification</p>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Pending Verification Requests</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Users with locked wallets awaiting identity verification</p>
             </div>
           </div>
 
           {/* Verification Request Card */}
-          <div className="bg-white rounded-xl p-5 border border-orange-200 shadow-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-orange-200 dark:border-orange-800/50 shadow-sm transition-colors">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="font-bold text-slate-900 text-sm">Account Verification Required</p>
-                <p className="text-xs text-slate-600 mt-1">User has been notified about verification process</p>
+                <p className="font-bold text-slate-900 dark:text-white text-sm">Account Verification Required</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">User has been notified about verification process</p>
               </div>
               <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">PENDING</span>
             </div>
@@ -262,22 +261,22 @@ export default function RiskConsole() {
             {/* Verification Status */}
             <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
               <div>
-                <p className="text-slate-500 font-bold">Step</p>
-                <p className="text-slate-900 font-bold">1/3 - Awaiting ID Submission</p>
+                <p className="text-slate-500 dark:text-slate-400 font-bold">Step</p>
+                <p className="text-slate-900 dark:text-slate-200 font-bold">1/3 - Awaiting ID Submission</p>
               </div>
               <div>
-                <p className="text-slate-500 font-bold">Request Time</p>
-                <p className="text-slate-900 font-bold">{new Date().toLocaleDateString('id-ID')}</p>
+                <p className="text-slate-500 dark:text-slate-400 font-bold">Request Time</p>
+                <p className="text-slate-900 dark:text-slate-200 font-bold">{new Date().toLocaleDateString('id-ID')}</p>
               </div>
             </div>
 
             {/* Verification Actions */}
-            <div className="flex gap-3 pt-4 border-t border-slate-200">
-              <button className="flex-1 py-2 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs transition-colors border border-emerald-200 flex items-center justify-center gap-2">
+            <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button className="flex-1 py-2 px-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-bold text-xs transition-colors border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-2">
                 <Check size={14} />
                 Mark Verified
               </button>
-              <button className="flex-1 py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors border border-slate-200 flex items-center justify-center gap-2">
+              <button className="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2">
                 <MessageCircle size={14} />
                 Send Reminder
               </button>
@@ -287,24 +286,24 @@ export default function RiskConsole() {
       )}
 
       {/* FULL TRANSACTION LOG - ALL ACTIVITY */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm transition-colors">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-slate-100 rounded-lg text-slate-700">
+          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-400">
             <Activity size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-slate-900">User Transaction Log with AI Analysis</h3>
-            <p className="text-xs text-slate-500 mt-1">All account transactions analyzed by Qwen AI</p>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white">User Transaction Log with AI Analysis</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">All account transactions analyzed by Qwen AI</p>
           </div>
         </div>
 
         {/* Transaction List */}
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
           {state.transactions.length > 0 ? (
             state.transactions.map((tx: Transaction, idx: number) => {
-              const bgColor = tx.status === 'RISK_HOLD' ? 'bg-red-50 border-red-200' : tx.status === 'FAILED' ? 'bg-slate-50 border-slate-200' : tx.status === 'PENDING_SYNC' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200';
-              const statusColor = tx.status === 'RISK_HOLD' ? 'text-red-700 bg-red-100' : tx.status === 'FAILED' ? 'text-slate-700 bg-slate-100' : tx.status === 'PENDING_SYNC' ? 'text-amber-700 bg-amber-100' : 'text-emerald-700 bg-emerald-100';
-              const riskColor = tx.riskScore ? tx.riskScore > 70 ? 'text-red-600' : tx.riskScore > 40 ? 'text-amber-600' : 'text-emerald-600' : 'text-slate-500';
+              const bgColor = tx.status === 'RISK_HOLD' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50' : tx.status === 'FAILED' ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700' : tx.status === 'PENDING_SYNC' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/50';
+              const statusColor = tx.status === 'RISK_HOLD' ? 'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40' : tx.status === 'FAILED' ? 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700' : tx.status === 'PENDING_SYNC' ? 'text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40' : 'text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40';
+              const riskColor = tx.riskScore ? tx.riskScore > 70 ? 'text-red-600 dark:text-red-400' : tx.riskScore > 40 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400';
 
               return (
                 <div key={idx} className={`border rounded-xl p-4 transition-all hover:shadow-md ${bgColor}`}>
@@ -322,11 +321,11 @@ export default function RiskConsole() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-semibold text-slate-900 mt-2">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-2">
                         {tx.merchant || tx.type === 'TOPUP' ? '📱 Top Up' : '🔄 Transfer'}
                       </p>
                     </div>
-                    <p className="text-lg font-black text-slate-900">
+                    <p className="text-lg font-black text-slate-900 dark:text-slate-100">
                       - Rp {tx.amount.toLocaleString('id-ID')}
                     </p>
                   </div>
@@ -336,12 +335,12 @@ export default function RiskConsole() {
 
                   {/* Row 3: Qwen AI Explanation (if exists) */}
                   {tx.riskReason && (
-                    <div className="bg-white/60 p-3 rounded-lg mb-3 border border-slate-200/50">
+                    <div className="bg-white/60 dark:bg-slate-950/40 p-3 rounded-lg mb-3 border border-slate-200/50 dark:border-slate-700">
                       <div className="flex items-start gap-2 mb-1">
-                        <Sparkles size={14} className="text-indigo-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Qwen AI Assessment</p>
+                        <Sparkles size={14} className="text-indigo-500 dark:text-indigo-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">Qwen AI Assessment</p>
                       </div>
-                      <p className="text-sm text-slate-700 leading-relaxed">
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                         {tx.riskReason}
                       </p>
                     </div>
@@ -356,7 +355,7 @@ export default function RiskConsole() {
                         setLoadingExplanation(null);
                       }}
                       disabled={loadingExplanation === tx.id}
-                      className="mb-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-sm transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="mb-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 font-semibold text-sm transition-all border border-indigo-200 dark:border-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loadingExplanation === tx.id ? (
                         <>

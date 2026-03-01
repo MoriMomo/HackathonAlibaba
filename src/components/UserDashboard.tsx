@@ -33,18 +33,18 @@ const StatPill = ({ label, value, colorClass, icon: Icon }: { label: string, val
 );
 
 const TransactionItem = ({ icon: Icon, color, merchant, date, amount, status, isHeld }: { icon: React.ElementType, color: string, merchant: string, date: string, amount: number, status: string, isHeld: boolean }) => (
-  <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition-colors group cursor-pointer border border-transparent hover:border-gray-100">
+  <div className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors group cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-slate-700">
     <div className="flex items-center gap-4">
       <div className={`p-3 rounded-full ${color}`}>
         <Icon size={20} />
       </div>
       <div>
-        <h4 className="font-semibold text-gray-900">{merchant}</h4>
-        <p className="text-xs text-gray-500">{date}</p>
+        <h4 className="font-semibold text-gray-900 dark:text-slate-100">{merchant}</h4>
+        <p className="text-xs text-gray-500 dark:text-slate-400">{date}</p>
       </div>
     </div>
     <div className="text-right">
-      <p className={`font-bold ${isHeld ? 'text-red-500' : 'text-gray-900'}`}>
+      <p className={`font-bold ${isHeld ? 'text-red-500 dark:text-red-400' : 'text-gray-900 dark:text-slate-100'}`}>
         - Rp {amount.toLocaleString('id-ID')}
       </p>
       {isHeld ? (
@@ -90,18 +90,25 @@ export default function UserDashboard() {
 
   // Dynamic Insights calculation based on actual transaction history
   const spendingData = React.useMemo(() => {
-    const baseHeights = [40, 65, 45, 80, 55, 60, 20]; // Baseline weekly graph
+    // We'll base the chart on Rp 500,000 max height to be realistic for daily spend
+    const MAX_DAILY_SPEND = 500000;
 
-    // Calculate total recent spending to animate the "Today" bar
+    // Baseline weekly spend amounts (in Rupiah) representing a realistic week for a user
+    const baseSpends = [150000, 320000, 210000, 450000, 280000, 310000, 100000]; // M-Su
+
+    // Calculate total recent spending to add to 'Today' (Sunday)
     const txTotal = state.transactions
       .filter((t: { type?: string }) => t.type === 'PAYMENT')
       .reduce((sum: number, t: { amount?: number }) => sum + (t.amount || 0), 0);
 
-    // Every 10k spent adds height to the 'Today' (Sun) column up to 100% max
-    const addedSpend = Math.min(Math.floor(txTotal / 10000), 80);
-    baseHeights[6] = Math.min(baseHeights[6] + addedSpend, 100);
+    // Add today's actual live transactions to the Sunday base line
+    baseSpends[6] += txTotal;
 
-    return baseHeights;
+    // Convert to heights (percentages), capping at 100% and setting a minimum of 5% for visibility
+    return baseSpends.map(spend => ({
+      amount: spend,
+      height: Math.max(Math.min((spend / MAX_DAILY_SPEND) * 100, 100), 5)
+    }));
   }, [state.transactions]);
 
   // Auto-focus input when QR modal opens
@@ -203,21 +210,21 @@ export default function UserDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
+    <div className="w-full font-sans text-gray-800 dark:text-slate-200 transition-colors">
 
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <nav className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-40 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-2">
-              <div className="bg-blue-600 p-1.5 rounded-lg">
+              <div className="bg-blue-600 dark:bg-blue-500 p-1.5 rounded-lg">
                 <Wallet className="text-white h-5 w-5" />
               </div>
-              <span className="font-bold text-xl tracking-tight text-blue-900">QunciPay</span>
+              <span className="font-bold text-xl tracking-tight text-blue-900 dark:text-blue-100">QunciPay</span>
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative" title="Notifications" aria-label="View notifications">
+              <button className="p-2 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors relative" title="Notifications" aria-label="View notifications">
                 <Bell size={20} />
                 <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
               </button>
@@ -234,8 +241,8 @@ export default function UserDashboard() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Hi, Budi 👋</h1>
-            <p className="text-gray-500 text-sm mt-1">Welcome back to your financial hub.</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Hi, Budi 👋</h1>
+            <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Welcome back to your financial hub.</p>
           </div>
 
           {/* Stats Row */}
@@ -243,18 +250,18 @@ export default function UserDashboard() {
             <StatPill
               label="OKE Score"
               value={`${state.okeScore} (Excellent)`}
-              colorClass="bg-emerald-50 border-emerald-100 text-emerald-700"
+              colorClass="bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400"
             />
             <StatPill
               label="Points"
               value={`${state.points.toLocaleString('id-ID')}`}
-              colorClass="bg-amber-50 border-amber-100 text-amber-700"
+              colorClass="bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400"
               icon={TrendingUp}
             />
             <StatPill
               label="Insurance"
               value="Active"
-              colorClass="bg-blue-50 border-blue-100 text-blue-700"
+              colorClass="bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400"
               icon={ShieldCheck}
             />
           </div>
@@ -350,7 +357,7 @@ export default function UserDashboard() {
               {/* Verification Help Modal */}
               {showVerificationInfo && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-6 text-center animate-in fade-in duration-200">
-                  <div className="w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[80vh] overflow-y-auto">
+                  <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[80vh] overflow-y-auto border border-transparent dark:border-slate-800">
                     <button
                       onClick={() => setShowVerificationInfo(false)}
                       className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -365,8 +372,8 @@ export default function UserDashboard() {
                       </div>
                     </div>
 
-                    <h2 className="text-2xl font-black text-slate-900 mb-2">Account Verification Required</h2>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-6">Wallet Locked - Follow Steps Below</p>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Account Verification Required</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold mb-6">Wallet Locked - Follow Steps Below</p>
 
                     {/* Step by step verification process */}
                     <div className="space-y-4 text-left mb-8">
@@ -377,8 +384,8 @@ export default function UserDashboard() {
                           </div>
                         </div>
                         <div>
-                          <h3 className="font-bold text-slate-900 mb-1">Contact Customer Service</h3>
-                          <p className="text-sm text-slate-600">Reach out to our support team via any of the channels below within 24 hours</p>
+                          <h3 className="font-bold text-slate-900 dark:text-white mb-1">Contact Customer Service</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Reach out to our support team via any of the channels below within 24 hours</p>
                         </div>
                       </div>
 
@@ -389,8 +396,8 @@ export default function UserDashboard() {
                           </div>
                         </div>
                         <div>
-                          <h3 className="font-bold text-slate-900 mb-1">Provide Identity Verification</h3>
-                          <p className="text-sm text-slate-600">Share your KTP/ID, phone number verification, and transaction history</p>
+                          <h3 className="font-bold text-slate-900 dark:text-white mb-1">Provide Identity Verification</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Share your KTP/ID, phone number verification, and transaction history</p>
                         </div>
                       </div>
 
@@ -401,8 +408,8 @@ export default function UserDashboard() {
                           </div>
                         </div>
                         <div>
-                          <h3 className="font-bold text-slate-900 mb-1">Admin Review & Approval</h3>
-                          <p className="text-sm text-slate-600">Our fraud team will review your account (typically 2-4 hours)</p>
+                          <h3 className="font-bold text-slate-900 dark:text-white mb-1">Admin Review & Approval</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Our fraud team will review your account (typically 2-4 hours)</p>
                         </div>
                       </div>
 
@@ -413,45 +420,45 @@ export default function UserDashboard() {
                           </div>
                         </div>
                         <div>
-                          <h3 className="font-bold text-emerald-700 mb-1">Wallet Unlocked</h3>
-                          <p className="text-sm text-slate-600">Your account will be reactivated and you can resume transactions</p>
+                          <h3 className="font-bold text-emerald-700 dark:text-emerald-400 mb-1">Wallet Unlocked</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Your account will be reactivated and you can resume transactions</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Customer Service Contact */}
-                    <div className="bg-slate-50 rounded-2xl p-6 mb-6 border border-slate-200">
-                      <h3 className="font-bold text-slate-900 mb-4 text-left">Contact Customer Service</h3>
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-6 mb-6 border border-slate-200 dark:border-slate-700">
+                      <h3 className="font-bold text-slate-900 dark:text-white mb-4 text-left">Contact Customer Service</h3>
                       <div className="space-y-3 text-left">
                         <div className="flex items-start gap-3">
-                          <div className="text-blue-600 mt-1">📞</div>
+                          <div className="text-blue-600 dark:text-blue-400 mt-1">📞</div>
                           <div>
-                            <p className="font-semibold text-slate-900">Phone Support</p>
-                            <p className="text-sm text-slate-600">+62 21 1234 5678</p>
+                            <p className="font-semibold text-slate-900 dark:text-slate-200">Phone Support</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">+62 21 1234 5678</p>
                             <p className="text-xs text-slate-500">Available 24/7</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <div className="text-blue-600 mt-1">💬</div>
+                          <div className="text-blue-600 dark:text-blue-400 mt-1">💬</div>
                           <div>
-                            <p className="font-semibold text-slate-900">Live Chat</p>
-                            <p className="text-sm text-slate-600">support.qunci.co.id</p>
+                            <p className="font-semibold text-slate-900 dark:text-slate-200">Live Chat</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">support.qunci.co.id</p>
                             <p className="text-xs text-slate-500">Average response: 2 minutes</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <div className="text-blue-600 mt-1">📧</div>
+                          <div className="text-blue-600 dark:text-blue-400 mt-1">📧</div>
                           <div>
-                            <p className="font-semibold text-slate-900">Email Support</p>
-                            <p className="text-sm text-slate-600">verify@qunci.co.id</p>
+                            <p className="font-semibold text-slate-900 dark:text-slate-200">Email Support</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">verify@qunci.co.id</p>
                             <p className="text-xs text-slate-500">Response within 1 hour</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <div className="text-blue-600 mt-1">📍</div>
+                          <div className="text-blue-600 dark:text-blue-400 mt-1">📍</div>
                           <div>
-                            <p className="font-semibold text-slate-900">Visit us</p>
-                            <p className="text-sm text-slate-600">Qunci HQ, Jakarta CBD</p>
+                            <p className="font-semibold text-slate-900 dark:text-slate-200">Visit us</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">Qunci HQ, Jakarta CBD</p>
                             <p className="text-xs text-slate-500">Business hours 09:00-18:00 WIB</p>
                           </div>
                         </div>
@@ -468,7 +475,7 @@ export default function UserDashboard() {
                       </a>
                       <a
                         href="mailto:verify@qunci.co.id"
-                        className="flex-1 py-3 px-4 bg-slate-200 text-slate-900 font-bold rounded-xl hover:bg-slate-300 transition-colors flex items-center justify-center gap-2"
+                        className="flex-1 py-3 px-4 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-xl hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
                       >
                         <span>📧</span> Email Now
                       </a>
@@ -476,7 +483,7 @@ export default function UserDashboard() {
 
                     <button
                       onClick={() => setShowVerificationInfo(false)}
-                      className="w-full mt-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                      className="w-full mt-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
                     >
                       Close
                     </button>
@@ -487,7 +494,7 @@ export default function UserDashboard() {
               {/* Transfer Mock overlay */}
               {isTransferring && !isLocked && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-6 text-center animate-in fade-in duration-200">
-                  <div className="w-full max-w-sm bg-slate-100 rounded-2xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+                  <div className="w-full max-w-sm bg-slate-100 dark:bg-slate-900 border border-transparent dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
                     <button
                       onClick={() => setIsTransferring(false)}
                       className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -496,24 +503,28 @@ export default function UserDashboard() {
                       <X size={24} />
                     </button>
 
-                    <h3 className="text-xl font-bold text-slate-800 mb-6 text-left">Pay by Merchant ID</h3>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 text-left">Pay by Merchant ID</h3>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-800 mb-6 text-left flex items-start gap-2 font-medium">
+                      <span className="mt-0.5">💡</span>
+                      <span><strong>Demo Tip:</strong> Use <strong>WRG-8821</strong> to send funds directly to the Warung Bu Siti merchant dashboard!</span>
+                    </p>
 
                     <div className="space-y-4 text-left">
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Merchant ID</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 block">Merchant ID</label>
                         <input
                           type="text"
                           value={transferMerchantId}
                           onChange={(e) => setTransferMerchantId(e.target.value.toUpperCase())}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-slate-400"
+                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
                           placeholder="e.g. QUNCI_MERCHANT_8829"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Amount (Rp)</label>
-                        <div className="relative flex bg-white border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-600 transition-all">
-                          <span className="px-4 py-3 text-slate-500 font-medium border-r border-slate-100 bg-slate-50">Rp</span>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 block">Amount (Rp)</label>
+                        <div className="relative flex bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-600 transition-all">
+                          <span className="px-4 py-3 text-slate-500 dark:text-slate-400 font-medium border-r border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">Rp</span>
                           <input
                             ref={transferInputRef}
                             type="text"
@@ -529,7 +540,7 @@ export default function UserDashboard() {
                                 confirmTransfer();
                               }
                             }}
-                            className="bg-transparent text-slate-900 font-bold px-4 py-3 outline-none w-full placeholder:text-slate-300"
+                            className="bg-transparent text-slate-900 dark:text-white font-bold px-4 py-3 outline-none w-full placeholder:text-slate-300 dark:placeholder:text-slate-600"
                             placeholder="0"
                             autoComplete="off"
                           />
@@ -667,27 +678,26 @@ export default function UserDashboard() {
             </div>
 
             {/* Spending Insights */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-900">Spending Insights</h3>
-                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
+                <h3 className="font-bold text-gray-900 dark:text-white">Spending Insights</h3>
+                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md">
                   AI: -20% vs last month
                 </span>
               </div>
 
               {/* Dynamic Chart Area */}
               <div className="h-48 w-full relative flex items-end justify-between gap-2">
-                {spendingData.map((height, i) => (
-                  <div key={i} className={`w-full rounded-t-md relative group transition-all duration-500 cursor-pointer ${i === 6 ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-50 hover:bg-blue-100'}`} style={{ height: `${height}%` }}>
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                      Rp {height * 10}k
+                {spendingData.map((data: { height: number; amount: number }, i: number) => (
+                  <div key={i} className={`w-full rounded-t-md relative group transition-all duration-500 cursor-pointer ${i === 6 ? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500' : 'bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700'}`} style={{ height: `${data.height}%` }}>
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1.5 px-2.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 flex flex-col items-center gap-0.5">
+                      <span className="font-bold">Rp {data.amount.toLocaleString('id-ID')}</span>
+                      <div className="w-2 h-2 bg-gray-900 rotate-45 absolute -bottom-1"></div>
                     </div>
                   </div>
                 ))}
-                {/* Gradient Overlay to make it look like a curve */}
-                <div className="absolute inset-0 bg-linear-to-t from-white via-transparent to-transparent pointer-events-none"></div>
               </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-400">
+              <div className="flex justify-between mt-2 text-xs text-gray-400 dark:text-slate-500">
                 <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
               </div>
             </div>
@@ -698,13 +708,13 @@ export default function UserDashboard() {
           <div className="space-y-6">
 
             {/* Recent Activity Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-50 flex justify-between items-center">
-                <h3 className="font-bold text-gray-900">Recent Activity</h3>
-                <button className="text-blue-600 text-sm font-medium hover:underline">View All</button>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
+              <div className="p-6 border-b border-gray-50 dark:border-slate-800/50 flex justify-between items-center">
+                <h3 className="font-bold text-gray-900 dark:text-white">Recent Activity</h3>
+                <button className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">View All</button>
               </div>
 
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-gray-50 dark:divide-slate-800/50">
                 {state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').length > 0 ? (
                   state.transactions.filter((t: { type: string }) => t.type === 'PAYMENT').map((tx: { id: string, status: string, merchant?: string, timestamp: string, amount: number }) => (
                     <TransactionItem
@@ -719,7 +729,7 @@ export default function UserDashboard() {
                     />
                   ))
                 ) : (
-                  <div className="p-4 text-center text-sm text-gray-500">No recent transactions.</div>
+                  <div className="p-4 text-center text-sm text-gray-500 dark:text-slate-400">No recent transactions.</div>
                 )}
               </div>
             </div>
