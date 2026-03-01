@@ -18,6 +18,8 @@ interface TransactionData {
     location: string;
     userHistory: {
         avgTransaction: number;
+        transactionRange: string;
+        transactionLimit: number;
         lastLogin: string;
         typicalLocation: string;
     };
@@ -53,14 +55,14 @@ export async function analyzeTransactionRisk(transactionData: TransactionData): 
 Schema: { "riskScore": number (0-100), "decision": "APPROVE"|"HOLD"|"REJECT", "reason": "Detailed explanation of the assessment", "flags": ["array", "of", "risk", "factors"] }
 
 For risk assessment, consider:
-- Transaction amount vs user history average
+- Transaction amount vs user history average and typical range. STRICT RULE: If the transaction amount exceeds the user's "transactionLimit", you MUST flag it entirely and strongly enforce a "HOLD" decision.
 - Time of transaction (unusual hours)
 - Location consistency
 - Merchant category
 - Frequency patterns
 - Behavioral anomalies
 
-Provide clear, specific reasons in the "reason" field.`;
+Provide clear, specific reasons in the "reason" field. Mention if it falls outside the normal range.`;
 
     const userPrompt = `Analyze this transaction for fraud risk: ${JSON.stringify(transactionData)}`;
 

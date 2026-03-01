@@ -43,7 +43,7 @@ const INITIAL_DATA: AppState = {
   pendingBalance: 0,
   merchantBalance: 0,
   walletLocked: false,
-  okeScore: 750,
+  okeScore: 50,
   points: 1250,
   isDarkMode: false, // Default light mode
   transactions: [
@@ -70,6 +70,7 @@ interface QunciContextType {
   topUpUser: (amount: number) => void;
   transferToOffline: (amount: number) => void;
   transferToOnline: (amount: number) => void;
+  liquidatePoints: (points: number) => void;
   getTransactionExplanation: (txId: string) => Promise<string | null>;
   toggleDarkMode: () => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
@@ -135,9 +136,13 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
       let newBalance = prev.userBalance;
       let newMerchantBalance = prev.merchantBalance;
       let newLockedState = prev.walletLocked;
+      let newOkeScore = prev.okeScore;
       const newPending = prev.pendingBalance;
 
       if (newStatus === 'COMPLETED') {
+        if (tx.amount >= 20000 && tx.status !== 'COMPLETED') {
+          newOkeScore = Math.min(100, newOkeScore + 1);
+        }
         // Unlock wallet if it was locked due to this transaction
         if (prev.walletLocked && tx.status === 'RISK_HOLD') {
           newLockedState = false;
@@ -160,7 +165,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         userBalance: newBalance,
         merchantBalance: newMerchantBalance,
         walletLocked: newLockedState,
-        pendingBalance: newPending
+        pendingBalance: newPending,
+        okeScore: newOkeScore
       };
     });
   };
@@ -182,6 +188,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           location: 'Jakarta, ID',
           userHistory: {
             avgTransaction: 150000,
+            transactionRange: `Rp 0 - Rp ${(currentState.okeScore * 10000).toLocaleString('id-ID')}`,
+            transactionLimit: currentState.okeScore * 10000,
             lastLogin: new Date().toISOString(),
             typicalLocation: 'Jakarta, ID',
           },
@@ -202,6 +210,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         let newlyLocked = false;
         let mdrAccumulator = 0;
         let earnedPoints = 0;
+        let scoreDelta = 0;
 
         const syncedTxs = prev.transactions.map(t => {
           if (t.status !== 'PENDING_SYNC') return t;
@@ -213,6 +222,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (riskResult.decision === 'HOLD' || riskResult.decision === 'REJECT') {
             newlyLocked = true;
+            scoreDelta -= 5;
             const reasons = riskResult.flags && riskResult.flags.length > 0
               ? riskResult.flags
               : [riskResult.reason || "Suspicious Activity Detected"];
@@ -227,6 +237,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           }
 
           // If approved
+          if (t.amount >= 20000) scoreDelta += 1;
           mdrAccumulator += (t.amount - (t.amount * 0.015)); // 1.5% MDR
           earnedPoints += Math.floor(t.amount / 1000); // 1 point per 1000
 
@@ -239,13 +250,15 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           setTimeout(() => showToast(`Sync Complete. +${earnedPoints} Qunci Points added!`, "success"), 500);
         }
 
+        const finalScore = Math.max(10, Math.min(100, prev.okeScore + scoreDelta));
         return {
           ...prev,
           transactions: syncedTxs,
           pendingBalance: 0,
           merchantBalance: prev.merchantBalance + mdrAccumulator,
           points: prev.points + earnedPoints,
-          walletLocked: newlyLocked ? true : prev.walletLocked
+          walletLocked: newlyLocked ? true : prev.walletLocked,
+          okeScore: finalScore
         };
       });
     } catch (e) {
@@ -305,6 +318,37 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         ...prev,
         userOfflineBalance: prev.userOfflineBalance - amount,
         userBalance: prev.userBalance + amount
+      };
+    });
+  };
+
+  const liquidatePoints = (pointsToLiquidate: number) => {
+    setState(prev => {
+      if (prev.points < pointsToLiquidate || pointsToLiquidate <= 0) {
+        showToast("Invalid points amount.", "error");
+        return prev;
+      }
+
+      // Conversion rate: 1 point = Rp 1
+      const cashValue = pointsToLiquidate;
+
+      // Log transaction
+      const newTx: Transaction = {
+        id: `tx_points_${Date.now()}`,
+        type: 'TOPUP',
+        amount: cashValue,
+        status: 'COMPLETED',
+        merchant: 'Qunci Points Liquidation',
+        timestamp: new Date().toLocaleString()
+      };
+
+      showToast(`Successfully converted ${pointsToLiquidate.toLocaleString('id-ID')} Points to Rp ${cashValue.toLocaleString('id-ID')}`, "success");
+
+      return {
+        ...prev,
+        points: prev.points - pointsToLiquidate,
+        userBalance: prev.userBalance + cashValue,
+        transactions: [newTx, ...prev.transactions]
       };
     });
   };
@@ -372,6 +416,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         location: 'Jakarta, ID',
         userHistory: {
           avgTransaction: 150000,
+          transactionRange: `Rp 0 - Rp ${(state.okeScore * 10000).toLocaleString('id-ID')}`,
+          transactionLimit: state.okeScore * 10000,
           lastLogin: new Date().toISOString(),
           typicalLocation: 'Jakarta, ID',
         },
@@ -413,6 +459,11 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           riskReason: status === 'RISK_HOLD' ? riskResult.reason : undefined
         };
 
+        let newScore = prev.okeScore;
+        if (status === 'COMPLETED' && amount >= 20000) {
+          newScore = Math.min(100, newScore + 1);
+        }
+
         if (newlyLocked) {
           setTimeout(() => showToast(`Payment Held by QunciGuard: ${riskResult.reason}`, "error"), 500);
         } else {
@@ -424,7 +475,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           userBalance: status === 'COMPLETED' ? prev.userBalance - amount : prev.userBalance, // Deduct only if completed
           merchantBalance: status === 'COMPLETED' ? prev.merchantBalance + settlementAmount : prev.merchantBalance,
           walletLocked: newlyLocked ? true : prev.walletLocked,
-          transactions: [newTx, ...prev.transactions]
+          transactions: [newTx, ...prev.transactions],
+          okeScore: newScore
         };
       });
 
@@ -469,6 +521,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           location: 'Jakarta, ID',
           userHistory: {
             avgTransaction: 150000,
+            transactionRange: `Rp 0 - Rp ${(state.okeScore * 10000).toLocaleString('id-ID')}`,
+            transactionLimit: state.okeScore * 10000,
             lastLogin: new Date().toISOString(),
             typicalLocation: 'Jakarta, ID',
           },
@@ -523,6 +577,10 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         // Deduct logic: ONLY deduct online balance if the status is NOT RISK_HOLD (i.e. COMPLETED)
         // If offline, deduct from offline balance immediately (pending sync)
         const shouldDeductOnline = !isOffline && status === 'COMPLETED';
+        let newScore = prev.okeScore;
+        if (shouldDeductOnline && amount >= 20000) {
+          newScore = Math.min(100, newScore + 1);
+        }
 
         return {
           ...prev,
@@ -532,7 +590,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           // If it's WRG-8821, actually add it to the merchant balance too, BUT ONLY IF ONLINE and COMPLETED.
           merchantBalance: (isBuSiti && shouldDeductOnline) ? prev.merchantBalance + amount : prev.merchantBalance,
           walletLocked: newlyLocked ? true : prev.walletLocked,
-          transactions: [newTx, ...prev.transactions]
+          transactions: [newTx, ...prev.transactions],
+          okeScore: newScore
         };
       });
 
@@ -574,6 +633,8 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         location: 'Jakarta, ID',
         userHistory: {
           avgTransaction: 150000,
+          transactionRange: `Rp 0 - Rp ${(state.okeScore * 10000).toLocaleString('id-ID')}`,
+          transactionLimit: state.okeScore * 10000,
           lastLogin: new Date().toISOString(),
           typicalLocation: 'Jakarta, ID',
         },
@@ -630,6 +691,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
       topUpUser,
       transferToOffline,
       transferToOnline,
+      liquidatePoints,
       getTransactionExplanation,
       toggleDarkMode,
       showToast,
