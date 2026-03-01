@@ -63,7 +63,7 @@ const TransactionItem = ({ icon: Icon, color, merchant, date, amount, status, is
 // --- Main Dashboard Component ---
 
 export default function UserDashboard() {
-  const { state, showToast, addOfflineTransaction, processQRISPayment, processTransfer, toggleNetwork, transferToOffline, transferToOnline } = useQunci();
+  const { state, showToast, addOfflineTransaction, processQRISPayment, processTransfer, toggleNetwork, transferToOffline, transferToOnline, liquidatePoints } = useQunci();
   const [showOfflineCode, setShowOfflineCode] = useState(false);
   const [isScanningQR, setIsScanningQR] = useState(false);
   const [qrisAmount, setQrisAmount] = useState('50000');
@@ -128,6 +128,21 @@ export default function UserDashboard() {
 
   const isOffline = state.network === 'OFFLINE';
   const isLocked = state.walletLocked;
+
+  const getOkeScoreLabel = (score: number) => {
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Average';
+    return 'Poor';
+  };
+
+  const getOkeScoreColor = (score: number) => {
+    if (score >= 80) return 'bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400';
+    if (score >= 60) return 'bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400';
+    if (score >= 40) return 'bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400';
+    return 'bg-red-50 border-red-100 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400';
+  };
+
 
   const handlePayQRIS = () => {
     if (isLocked) return;
@@ -249,21 +264,35 @@ export default function UserDashboard() {
           <div className="flex flex-wrap gap-2">
             <StatPill
               label="OKE Score"
-              value={`${state.okeScore} (Excellent)`}
-              colorClass="bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400"
+              value={`${state.okeScore} (${getOkeScoreLabel(state.okeScore)})`}
+              colorClass={getOkeScoreColor(state.okeScore)}
             />
-            <StatPill
-              label="Points"
-              value={`${state.points.toLocaleString('id-ID')}`}
-              colorClass="bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400"
-              icon={TrendingUp}
-            />
-            <StatPill
+            <button
+              onClick={() => {
+                if (state.points > 0) {
+                  if (confirm(`Convert ${state.points.toLocaleString('id-ID')} points into Rp ${state.points.toLocaleString('id-ID')} wallet balance?`)) {
+                    liquidatePoints(state.points);
+                  }
+                } else {
+                  showToast("You have 0 points to liquidate.", "info");
+                }
+              }}
+              className="hover:opacity-80 transition-opacity"
+              title="Click to convert points to cash"
+            >
+              <StatPill
+                label="Points"
+                value={`${state.points.toLocaleString('id-ID')}`}
+                colorClass="bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400 cursor-pointer"
+                icon={TrendingUp}
+              />
+            </button>
+            {/* <StatPill
               label="Insurance"
               value="Active"
               colorClass="bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400"
               icon={ShieldCheck}
-            />
+            /> */}
           </div>
         </div>
 
@@ -656,18 +685,16 @@ export default function UserDashboard() {
                 </div>
 
                 <div className="flex gap-3 mt-4">
-                  <button onClick={handleTopUp} className="flex-1 bg-white text-blue-900 py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
-                    <ArrowUpRight size={18} /> Top Up
-                  </button>
+                  {!isOffline && (
+                    <>
+                      <button onClick={handleTopUp} className="flex-1 bg-white text-blue-900 py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
+                        <ArrowUpRight size={18} /> Top Up
+                      </button>
 
-                  {isOffline ? (
-                    <button onClick={handleOfflinePay} className="flex-1 bg-amber-500 text-slate-900 py-3 px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20">
-                      <QrCode size={18} /> Pay Offline Code
-                    </button>
-                  ) : (
-                    <button onClick={handlePayQRIS} className="flex-1 bg-emerald-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20">
-                      <ScanLine size={18} /> Pay QRIS
-                    </button>
+                      <button onClick={handlePayQRIS} className="flex-1 bg-emerald-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20">
+                        <ScanLine size={18} /> Pay QRIS
+                      </button>
+                    </>
                   )}
 
                   <button onClick={() => setIsTransferring(true)} className="flex-1 bg-blue-800/50 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 border border-white/10 shadow-lg" title="Transfer">
