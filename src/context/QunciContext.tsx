@@ -33,6 +33,19 @@ interface AppState {
   isDarkMode: boolean; // Dark mode state
 }
 
+// --- Helper Functions ---
+
+/**
+ * Calculate offline transfer limit based on Oke Score
+ * Formula: okeScore * 10,000 IDR
+ * Range: 10-100 score = 100,000 - 1,000,000 IDR
+ */
+export function calculateOfflineLimit(okeScore: number): number {
+    // Clamp okeScore between 10 and 100
+    const clampedScore = Math.max(10, Math.min(100, okeScore));
+    return clampedScore * 10000;
+}
+
 // --- Mock Data ---
 const INITIAL_DATA: AppState = {
   role: 'USER',
@@ -43,7 +56,7 @@ const INITIAL_DATA: AppState = {
   pendingBalance: 0,
   merchantBalance: 0,
   walletLocked: false,
-  okeScore: 750,
+  okeScore: 50, // Default Oke Score (range: 10-100)
   points: 1250,
   isDarkMode: false, // Default light mode
   transactions: [
@@ -172,6 +185,9 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
     showToast("Syncing offline transactions with Qunci Engine...", "info");
 
     try {
+      // Calculate offline transfer limit based on Oke Score
+      const maxOfflineTransferLimit = calculateOfflineLimit(currentState.okeScore);
+
       // Call real AI API for each pending transaction
       const riskResults = await Promise.all(pendingTxs.map(async (t) => {
         const transactionData = {
@@ -185,6 +201,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
             lastLogin: new Date().toISOString(),
             typicalLocation: 'Jakarta, ID',
           },
+          maxOfflineTransferLimit: maxOfflineTransferLimit, // Pass Oke Score based limit to risk engine
         };
 
         const res = await fetch('/api/risk/check', {
@@ -202,6 +219,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
         let newlyLocked = false;
         let mdrAccumulator = 0;
         let earnedPoints = 0;
+        let okeScoreChange = 0; // Track Oke Score changes
 
         const syncedTxs = prev.transactions.map(t => {
           if (t.status !== 'PENDING_SYNC') return t;
@@ -211,11 +229,22 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
 
           const riskResult = resultObj.data;
 
-          if (riskResult.decision === 'HOLD' || riskResult.decision === 'REJECT') {
+          // Check if amount exceeds offline limit - flag as suspicious
+          const exceedsLimit = t.amount > maxOfflineTransferLimit;
+          
+          if (riskResult.decision === 'HOLD' || riskResult.decision === 'REJECT' || exceedsLimit) {
             newlyLocked = true;
+            // Failed offline payment - decrease Oke Score by 5
+            okeScoreChange -= 5;
+            
             const reasons = riskResult.flags && riskResult.flags.length > 0
               ? riskResult.flags
               : [riskResult.reason || "Suspicious Activity Detected"];
+            
+            // Add exceeded limit reason if applicable
+            if (exceedsLimit) {
+              reasons.push(`Exceeds offline limit (${maxOfflineTransferLimit.toLocaleString('id-ID')} IDR)`);
+            }
 
             return {
               ...t,
@@ -226,12 +255,16 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
             };
           }
 
-          // If approved
+          // If approved - successful offline payment
           mdrAccumulator += (t.amount - (t.amount * 0.015)); // 1.5% MDR
           earnedPoints += Math.floor(t.amount / 1000); // 1 point per 1000
+          okeScoreChange += 1; // Increase Oke Score by 1 for successful offline payment
 
           return { ...t, status: 'COMPLETED' as Transaction['status'], riskScore: riskResult.riskScore };
         });
+
+        // Calculate new Oke Score (clamped between 10 and 100)
+        const newOkeScore = Math.max(10, Math.min(100, prev.okeScore + okeScoreChange));
 
         if (newlyLocked) {
           setTimeout(() => showToast("Security Alert: Suspicious offline activity detected. Wallet Locked.", "error"), 500);
@@ -245,6 +278,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           pendingBalance: 0,
           merchantBalance: prev.merchantBalance + mdrAccumulator,
           points: prev.points + earnedPoints,
+          okeScore: newOkeScore,
           walletLocked: newlyLocked ? true : prev.walletLocked
         };
       });
@@ -419,11 +453,17 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
           showToast(`QRIS Payment of Rp ${amount.toLocaleString('id-ID')} Successful!`, "success");
         }
 
+        // Calculate new Oke Score (clamped between 10 and 100)
+        const newOkeScore = status === 'COMPLETED' 
+          ? Math.max(10, Math.min(100, prev.okeScore + 1)) // +1 for successful online payment
+          : prev.okeScore;
+
         return {
           ...prev,
           userBalance: status === 'COMPLETED' ? prev.userBalance - amount : prev.userBalance, // Deduct only if completed
           merchantBalance: status === 'COMPLETED' ? prev.merchantBalance + settlementAmount : prev.merchantBalance,
           walletLocked: newlyLocked ? true : prev.walletLocked,
+          okeScore: newOkeScore,
           transactions: [newTx, ...prev.transactions]
         };
       });

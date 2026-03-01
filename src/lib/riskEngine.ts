@@ -21,6 +21,7 @@ interface TransactionData {
         lastLogin: string;
         typicalLocation: string;
     };
+    maxOfflineTransferLimit?: number; // Oke Score based limit for offline transfers
 }
 
 import OpenAI from 'openai';

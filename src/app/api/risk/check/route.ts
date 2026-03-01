@@ -14,6 +14,7 @@ const transactionSchema = z.object({
         lastLogin: z.string(),
         typicalLocation: z.string(),
     }),
+    maxOfflineTransferLimit: z.number().optional(), // Oke Score based limit for offline transfers
 });
 
 export async function POST(req: Request) {
