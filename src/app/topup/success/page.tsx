@@ -11,19 +11,11 @@ function TopUpSuccessContent() {
     const router = useRouter();
     const context = useQunci();
 
-    // Guard against null context during SSR
-    if (!context) {
-        return (
-            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center space-y-4">
-                <Loader2 className="text-blue-500 animate-spin mx-auto" size={32} />
-                <p className="text-slate-500 text-sm">Loading...</p>
-            </div>
-        );
-    }
-
-    const { topUpUser, showToast } = context;
-
     useEffect(() => {
+        if (!context) return;
+
+        const { topUpUser, showToast } = context;
+
         // Wait for a brief moment to simulate processing
         const timer = setTimeout(() => {
             // Top up with out dummy 500,000 amount
@@ -35,7 +27,17 @@ function TopUpSuccessContent() {
         }, 2000);
 
         return () => clearTimeout(timer);
-    }, [topUpUser, showToast, router]);
+    }, [context, router]);
+
+    // Guard against null context during SSR
+    if (!context) {
+        return (
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center space-y-4">
+                <Loader2 className="text-blue-500 animate-spin mx-auto" size={32} />
+                <p className="text-slate-500 text-sm">Loading...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center space-y-4 animate-in fade-in zoom-in duration-500">

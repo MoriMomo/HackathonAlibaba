@@ -30,6 +30,7 @@ interface AppState {
   transactions: Transaction[];
   okeScore: number;
   points: number;
+  isDarkMode: boolean; // Dark mode state
 }
 
 // --- Mock Data ---
@@ -40,10 +41,11 @@ const INITIAL_DATA: AppState = {
   userBalance: 4500000,
   userOfflineBalance: 500000,
   pendingBalance: 0,
-  merchantBalance: 1250000,
+  merchantBalance: 0,
   walletLocked: false,
   okeScore: 750,
   points: 1250,
+  isDarkMode: false, // Default light mode
   transactions: [
     { id: 'tx_1', type: 'PAYMENT', amount: 25000, status: 'COMPLETED', merchant: 'Kopi Kenangan', timestamp: '2023-10-25 08:30', riskScore: 10 },
     { id: 'tx_2', type: 'PAYMENT', amount: 150000, status: 'COMPLETED', merchant: 'Alfamart', timestamp: '2023-10-24 19:15', riskScore: 15 },
@@ -69,6 +71,7 @@ interface QunciContextType {
   transferToOffline: (amount: number) => void;
   transferToOnline: (amount: number) => void;
   getTransactionExplanation: (txId: string) => Promise<string | null>;
+  toggleDarkMode: () => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   toast: { msg: string, type: 'success' | 'error' | 'info' } | null;
 }
@@ -78,6 +81,15 @@ const QunciContext = createContext<QunciContextType>(null as unknown as QunciCon
 export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, setState] = useState<AppState>(INITIAL_DATA);
   const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Sync dark mode state with HTML document element
+  React.useEffect(() => {
+    if (state.isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [state.isDarkMode]);
 
   // --- Actions ---
 
@@ -596,6 +608,10 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const toggleDarkMode = () => {
+    setState(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }));
+  };
+
   return (
     <QunciContext.Provider value={{
       state,
@@ -615,6 +631,7 @@ export const QunciProvider = ({ children }: { children: React.ReactNode }) => {
       transferToOffline,
       transferToOnline,
       getTransactionExplanation,
+      toggleDarkMode,
       showToast,
       toast
     }}>

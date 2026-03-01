@@ -38,11 +38,11 @@ interface TxData {
 // --- Components ---
 
 const StatCard = ({ title, value, subtext, icon: Icon, color, highlight = false }: StatCardProps) => (
-  <div className={`relative overflow-hidden rounded-2xl p-6 border ${highlight ? 'bg-linear-to-br from-emerald-50 to-white border-emerald-100 shadow-md shadow-emerald-100/50' : 'bg-white border-gray-100 shadow-sm'}`}>
+  <div className={`relative overflow-hidden rounded-2xl p-6 border transition-colors ${highlight ? 'bg-linear-to-br from-emerald-50 dark:from-emerald-900/20 to-white dark:to-slate-900 border-emerald-100 dark:border-emerald-800 shadow-md shadow-emerald-100/50 dark:shadow-none' : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 shadow-sm'}`}>
     <div className="flex justify-between items-start mb-4">
       <div>
-        <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
+        <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">{title}</p>
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{value}</h3>
       </div>
       <div className={`p-3 rounded-xl ${color}`}>
         <Icon size={20} className="text-white" />
@@ -65,30 +65,30 @@ const TransactionRow = ({ tx }: { tx: TxData }) => {
   const displayDate = tx.timestamp || tx.date || '';
 
   return (
-    <div className={`flex items-center justify-between p-5 rounded-2xl transition-all shadow-sm ${isRisk ? 'bg-red-50 border border-red-100' : 'bg-white border border-gray-100'}`}>
+    <div className={`flex items-center justify-between p-5 rounded-2xl transition-all shadow-sm ${isRisk ? 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50' : 'bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800'}`}>
       <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-full ${isRisk ? 'bg-red-100 text-red-600' : isPending ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+        <div className={`p-3 rounded-full ${isRisk ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' : isPending ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'}`}>
           {isRisk ? <ShieldAlert size={22} /> : isPending ? <Clock size={22} /> : <CheckCircle size={22} />}
         </div>
         <div>
           <div className="flex items-center gap-3">
-            <h4 className="font-bold text-gray-900 text-base">{tx.merchant || 'QunciPay User'}</h4>
+            <h4 className="font-bold text-gray-900 dark:text-slate-100 text-base">{tx.merchant || 'QunciPay User'}</h4>
             {isRisk && (
               <span className="px-2.5 py-1 bg-red-200 text-red-700 text-[10px] font-bold uppercase rounded-full">
                 Risk Hold
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-500 mt-1">{displayDate} • {tx.id}</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{displayDate} • {tx.id}</p>
           {isRisk && (
-            <p className="text-sm text-red-600 font-medium mt-2 flex items-center gap-1.5">
+            <p className="text-sm text-red-600 dark:text-red-400 font-medium mt-2 flex items-center gap-1.5">
               <AlertTriangle size={14} /> Unusual activity detected
             </p>
           )}
         </div>
       </div>
       <div className="text-right">
-        <p className={`font-black text-lg ${isRisk ? 'text-red-700' : 'text-gray-900'}`}>
+        <p className={`font-black text-lg ${isRisk ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-slate-100'}`}>
           {displayAmount}
         </p>
         <div className="mt-1.5">
@@ -119,13 +119,21 @@ export default function MerchantDashboard() {
   // Dynamic stat calculations
   const totalSales = React.useMemo(() => {
     return state.transactions
-      .filter((t: { type?: string, status?: string }) => t.type === 'PAYMENT' && t.status === 'COMPLETED')
+      .filter((t: { type?: string, status?: string, merchant?: string }) =>
+        t.type === 'PAYMENT' &&
+        t.status === 'COMPLETED' &&
+        (t.merchant === 'Warung Bu Siti' || t.merchant === 'Qunci Merchant (QRIS)')
+      )
       .reduce((sum: number, t: { amount?: number }) => sum + (t.amount || 0), 0);
   }, [state.transactions]);
 
   const pendingSettlement = React.useMemo(() => {
     return state.transactions
-      .filter((t: { type?: string, status?: string }) => t.type === 'PAYMENT' && (t.status === 'PENDING_SYNC' || t.status === 'PENDING' || t.status === 'RISK_HOLD'))
+      .filter((t: { type?: string, status?: string, merchant?: string }) =>
+        t.type === 'PAYMENT' &&
+        (t.status === 'PENDING_SYNC' || t.status === 'PENDING' || t.status === 'RISK_HOLD') &&
+        (t.merchant === 'Warung Bu Siti' || t.merchant === 'Qunci Merchant (QRIS)')
+      )
       .reduce((sum: number, t: { amount?: number }) => sum + (t.amount || 0), 0);
   }, [state.transactions]);
 
@@ -174,31 +182,31 @@ export default function MerchantDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 font-sans text-gray-800 pb-12">
+    <div className="w-full font-sans text-gray-800 dark:text-slate-200 pb-12 transition-colors">
 
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <nav className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-40 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-4">
-              <div className="bg-blue-600 p-2 rounded-lg">
+              <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-lg">
                 <Wallet className="text-white h-5 w-5" />
               </div>
               <div>
-                <h1 className="font-bold text-lg text-gray-900 leading-tight">Warung Bu Siti</h1>
-                <p className="text-xs text-gray-500">Merchant ID: #WRG-8821</p>
+                <h1 className="font-bold text-lg text-gray-900 dark:text-white leading-tight">Warung Bu Siti</h1>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Merchant ID: #WRG-8821</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowQR(true)}
-                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors"
+                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
               >
                 <QrCode size={18} />
                 Generate QR
               </button>
-              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
+              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-slate-800 flex items-center justify-center text-gray-600 dark:text-slate-400 font-bold text-xs">
                 BS
               </div>
             </div>
@@ -209,24 +217,24 @@ export default function MerchantDashboard() {
       {/* QR Code Modal Overlay */}
       {showQR && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-2xl w-full max-w-sm flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-200 shadow-2xl border border-slate-200">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl w-full max-w-sm flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-200 shadow-2xl border border-slate-200 dark:border-slate-800">
             {!qrisUrl ? (
               <div className="w-full flex flex-col items-center">
-                <div className="bg-blue-50 p-3 rounded-full text-blue-600 mb-4">
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-full text-blue-600 dark:text-blue-400 mb-4">
                   <QrCode size={32} />
                 </div>
-                <h3 className="font-bold text-xl mb-1 text-slate-900">Create Dynamic QRIS</h3>
-                <p className="text-slate-500 text-sm mb-6 text-center">Enter the nominal amount to generate a unique PayLabs payment code.</p>
+                <h3 className="font-bold text-xl mb-1 text-slate-900 dark:text-white">Create Dynamic QRIS</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 text-center">Enter the nominal amount to generate a unique PayLabs payment code.</p>
 
                 <div className="w-full mb-6">
-                  <label className="text-xs font-bold text-slate-600 mb-1.5 block uppercase tracking-wider">Nominal (Rp)</label>
-                  <div className="flex border border-slate-300 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <span className="bg-slate-50 px-4 py-3 text-slate-500 font-bold border-r border-slate-300">Rp</span>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 block uppercase tracking-wider">Nominal (Rp)</label>
+                  <div className="flex border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                    <span className="bg-slate-50 dark:bg-slate-950 px-4 py-3 text-slate-500 dark:text-slate-400 font-bold border-r border-slate-300 dark:border-slate-700">Rp</span>
                     <input
                       type="number"
                       value={qrisAmount}
                       onChange={(e) => setQrisAmount(e.target.value)}
-                      className="w-full px-4 py-3 text-slate-900 font-bold outline-none"
+                      className="w-full px-4 py-3 text-slate-900 dark:text-white bg-white dark:bg-slate-950 font-bold outline-none"
                       placeholder="e.g. 50000"
                       autoFocus
                     />
@@ -234,7 +242,7 @@ export default function MerchantDashboard() {
                 </div>
 
                 <div className="flex gap-3 w-full">
-                  <button onClick={closeQRModal} className="flex-1 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                  <button onClick={closeQRModal} className="flex-1 py-3 rounded-xl font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                     Cancel
                   </button>
                   <button
@@ -248,15 +256,15 @@ export default function MerchantDashboard() {
               </div>
             ) : (
               <div className="flex flex-col items-center w-full">
-                <h3 className="font-bold text-xl text-slate-900 mb-1">Scan to Pay</h3>
-                <p className="text-slate-500 text-sm mb-6">Powered by PayLabs QRIS</p>
+                <h3 className="font-bold text-xl text-slate-900 dark:text-white mb-1">Scan to Pay</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Powered by PayLabs QRIS</p>
 
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 w-full flex justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={qrisUrl} alt="QRIS Code" className="w-[240px] h-[240px] object-cover rounded-lg" />
                 </div>
 
-                <div className="bg-emerald-50 text-emerald-700 w-full py-3 rounded-xl text-center mb-6">
+                <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 w-full py-3 rounded-xl text-center mb-6">
                   <p className="text-sm font-medium">Total Payment:</p>
                   <p className="font-black text-2xl tracking-tight">Rp {Number(qrisAmount).toLocaleString('id-ID')}</p>
                 </div>
@@ -314,18 +322,18 @@ export default function MerchantDashboard() {
           <div className="lg:col-span-2 space-y-8">
 
             {/* AI Analytics - Redesigned to be lighter and more integrated */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+              <div className="p-6 border-b border-gray-100 dark:border-slate-800/50 flex justify-between items-center bg-gradient-to-r from-gray-50 dark:from-slate-800/50 to-white dark:to-slate-900">
                 <div className="flex items-center gap-2">
-                  <div className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600">
+                  <div className="bg-indigo-100 dark:bg-indigo-900/30 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
                     <BarChart3 size={20} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">Qunci AI Insights</h3>
-                    <p className="text-xs text-gray-500">Premium Analytics • <span onClick={() => setShowUpgradeModal(true)} className="text-indigo-600 cursor-pointer hover:underline">Upgrade for $5/mo</span></p>
+                    <h3 className="font-bold text-gray-900 dark:text-white">Qunci AI Insights</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Premium Analytics • <span onClick={() => setShowUpgradeModal(true)} className="text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline">Upgrade for $5/mo</span></p>
                   </div>
                 </div>
-                <button onClick={() => setShowFullReport(true)} className="text-sm text-gray-600 font-medium hover:text-gray-900">View Full Report</button>
+                <button onClick={() => setShowFullReport(true)} className="text-sm text-gray-600 dark:text-slate-300 font-medium hover:text-gray-900 dark:hover:text-white">View Full Report</button>
               </div>
 
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -367,8 +375,8 @@ export default function MerchantDashboard() {
             {/* Transaction Queue */}
             <div>
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-900">Live Transaction Queue</h3>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+                <h3 className="font-bold text-gray-900 dark:text-white">Live Transaction Queue</h3>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -378,14 +386,14 @@ export default function MerchantDashboard() {
               </div>
 
               <div className="space-y-3">
-                {state.transactions.filter((tx: TxData) => tx.status === 'PENDING' || tx.merchant === 'Warung Bu Siti').length > 0 ? (
+                {state.transactions.filter((tx: TxData) => tx.merchant === 'Warung Bu Siti' || tx.merchant === 'Qunci Merchant (QRIS)').length > 0 ? (
                   state.transactions
-                    .filter((tx: TxData) => tx.status === 'PENDING' || tx.merchant === 'Warung Bu Siti')
+                    .filter((tx: TxData) => tx.merchant === 'Warung Bu Siti' || tx.merchant === 'Qunci Merchant (QRIS)')
                     .map((tx: TxData) => (
                       <TransactionRow key={tx.id} tx={tx} />
                     ))
                 ) : (
-                  <div className="bg-white rounded-xl p-8 text-center text-slate-500 border border-slate-100">
+                  <div className="bg-white dark:bg-slate-900 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
                     No transactions yet. Generate a QR code to receive payments!
                   </div>
                 )}
@@ -398,24 +406,24 @@ export default function MerchantDashboard() {
           <div className="space-y-6">
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-gray-100 dark:border-slate-800 shadow-sm transition-colors">
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setShowQR(true)} className="p-3 rounded-xl border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center gap-2 group">
-                  <QrCode className="text-gray-400 group-hover:text-blue-600" size={24} />
-                  <span className="text-xs font-medium text-gray-600 group-hover:text-blue-700">Show QR</span>
+                <button onClick={() => setShowQR(true)} className="p-3 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-slate-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex flex-col items-center gap-2 group">
+                  <QrCode className="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" size={24} />
+                  <span className="text-xs font-medium text-gray-600 dark:text-slate-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">Show QR</span>
                 </button>
-                <button className="p-3 rounded-xl border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center gap-2 group">
-                  <Download className="text-gray-400 group-hover:text-blue-600" size={24} />
-                  <span className="text-xs font-medium text-gray-600 group-hover:text-blue-700">Export CSV</span>
+                <button className="p-3 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-slate-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex flex-col items-center gap-2 group">
+                  <Download className="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" size={24} />
+                  <span className="text-xs font-medium text-gray-600 dark:text-slate-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">Export CSV</span>
                 </button>
-                <button className="p-3 rounded-xl border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center gap-2 group">
-                  <Users className="text-gray-400 group-hover:text-blue-600" size={24} />
-                  <span className="text-xs font-medium text-gray-600 group-hover:text-blue-700">Customers</span>
+                <button className="p-3 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-slate-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex flex-col items-center gap-2 group">
+                  <Users className="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" size={24} />
+                  <span className="text-xs font-medium text-gray-600 dark:text-slate-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">Customers</span>
                 </button>
-                <button className="p-3 rounded-xl border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center gap-2 group">
-                  <MoreHorizontal className="text-gray-400 group-hover:text-blue-600" size={24} />
-                  <span className="text-xs font-medium text-gray-600 group-hover:text-blue-700">More</span>
+                <button className="p-3 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-slate-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex flex-col items-center gap-2 group">
+                  <MoreHorizontal className="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" size={24} />
+                  <span className="text-xs font-medium text-gray-600 dark:text-slate-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">More</span>
                 </button>
               </div>
             </div>
@@ -461,10 +469,10 @@ export default function MerchantDashboard() {
       {/* UPGRADE MODAL */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200 border border-slate-200 dark:border-slate-800">
             <button
               onClick={() => setShowUpgradeModal(false)}
-              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               aria-label="Close modal"
             >
               <MoreHorizontal size={24} className="rotate-90" />
@@ -474,17 +482,17 @@ export default function MerchantDashboard() {
               <div className="w-14 h-14 bg-linear-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
                 <TrendingUp size={28} className="text-white" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-1.5">Upgrade to Premium Analytics</h3>
-              <p className="text-slate-600 text-xs">Unlock advanced insights and predictive intelligence</p>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1.5">Upgrade to Premium Analytics</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-xs">Unlock advanced insights and predictive intelligence</p>
             </div>
 
             {/* Pricing */}
-            <div className="bg-linear-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 mb-5 border border-indigo-100">
+            <div className="bg-linear-to-br from-indigo-50 dark:from-indigo-900/20 to-purple-50 dark:to-purple-900/20 rounded-2xl p-5 mb-5 border border-indigo-100 dark:border-indigo-800">
               <div className="text-center mb-3">
-                <span className="text-4xl font-black text-slate-900">$5</span>
-                <span className="text-slate-600 text-base">/month</span>
+                <span className="text-4xl font-black text-slate-900 dark:text-white">$5</span>
+                <span className="text-slate-600 dark:text-slate-400 text-base">/month</span>
               </div>
-              <p className="text-xs text-center text-slate-600">Billed monthly • Cancel anytime</p>
+              <p className="text-xs text-center text-slate-600 dark:text-slate-400">Billed monthly • Cancel anytime</p>
             </div>
 
             {/* Features */}
@@ -528,10 +536,10 @@ export default function MerchantDashboard() {
       {showFullReport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 overflow-y-auto">
           <div className="min-h-screen flex items-center justify-center p-4 py-8">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-6 relative animate-in fade-in zoom-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-4xl w-full p-6 relative animate-in fade-in zoom-in duration-200 border border-slate-200 dark:border-slate-800">
               <button
                 onClick={() => setShowFullReport(false)}
-                className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors z-10"
+                className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors z-10"
                 aria-label="Close modal"
               >
                 <MoreHorizontal size={24} className="rotate-90" />
@@ -544,8 +552,8 @@ export default function MerchantDashboard() {
                     <BarChart3 size={20} className="text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-slate-900">Qunci AI Full Analytics Report</h3>
-                    <p className="text-slate-600 text-xs">Generated on {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white">Qunci AI Full Analytics Report</h3>
+                    <p className="text-slate-600 dark:text-slate-400 text-xs">Generated on {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
               </div>
